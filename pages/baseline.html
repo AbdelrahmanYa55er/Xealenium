@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Baseline Page</title>
+    <style>
+        /* ================================================================
+           BASELINE PAGE ? Place your ORIGINAL working HTML here.
+           This is the version your tests were originally written against.
+           The Visual Engine will capture snapshots from this page.
+           ================================================================ */
+        body { font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f0f2f5; }
+        .form-card { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1a1a2e; margin-bottom: 24px; }
+        label { display: block; font-weight: 600; margin: 12px 0 4px; color: #333; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        input:focus { border-color: #4361ee; outline: none; box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
+        .row { display: flex; gap: 16px; }
+        .row > div { flex: 1; }
+        .checkbox-group { margin: 16px 0; display: flex; align-items: center; gap: 8px; }
+        .checkbox-group input { width: auto; }
+        button { width: 100%; padding: 12px; background: #4361ee; color: #fff; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #3a56d4; }
+    </style>
+</head>
+<body>
+<div class="form-card">
+    <h1>Registration Form</h1>
+
+    <label for="fname">First Name</label>
+    <input type="text" id="fname" placeholder="John" value="John">
+
+    <label for="lname">Last Name</label>
+    <input type="text" id="lname" placeholder="Doe" value="Doe">
+
+    <label for="email">Email</label>
+    <input type="email" id="email" placeholder="john@example.com" value="john@example.com">
+
+    <label for="phone">Phone</label>
+    <input type="tel" id="phone" placeholder="+1 234 567 8900" value="+1 234 567 8900">
+
+    <label for="city">City</label>
+    <input type="text" id="city" placeholder="New York" value="New York">
+
+    <div class="row">
+        <div>
+            <label for="zip">ZIP Code</label>
+            <input type="text" id="zip" placeholder="10001" value="10001">
+        </div>
+        <div>
+            <label for="country">Country</label>
+            <select id="country">
+                <option value="US" selected>USA</option>
+                <option value="UK">UK</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="checkbox-group">
+        <input type="checkbox" id="terms" checked>
+        <label for="terms" style="display:inline;margin:0;">I accept the terms and conditions</label>
+    </div>
+    <div class="checkbox-group">
+        <input type="checkbox" id="newsletter" checked>
+        <label for="newsletter" style="display:inline;margin:0;">Subscribe to newsletter</label>
+    </div>
+
+    <button id="submit-btn" type="submit">Register Now</button>
+</div>
+</body>
+</html>

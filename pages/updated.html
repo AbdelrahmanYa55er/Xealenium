@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Updated Page</title>
+    <style>
+        /* ================================================================
+           UPDATED PAGE ? Place your MODIFIED / BROKEN HTML here.
+           This is the version where element IDs, tags, or structure changed.
+           The Visual Engine will attempt to heal broken locators against
+           the baseline snapshots captured from baseline.html.
+           ================================================================ */
+        body { font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #1a1a2e; color: #e0e0e0; }
+        .form-card { background: #16213e; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+        h1 { text-align: center; color: #e0e0e0; margin-bottom: 24px; }
+        span.e-title { display: block; font-weight: 600; margin: 12px 0 4px; color: #a0a0c0; }
+        div[contenteditable] { width: 100%; padding: 10px; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 14px; background: #0f3460; color: #e0e0e0; min-height: 38px; }
+        div[contenteditable]:focus { border-color: #e94560; outline: none; }
+        div[contenteditable][data-placeholder]:empty::before { content: attr(data-placeholder); color: #666; }
+        .row { display: flex; gap: 16px; }
+        .row > div { flex: 1; }
+        .fake-toggle { margin: 16px 0; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .toggle-box { width: 20px; height: 20px; border: 2px solid #e94560; border-radius: 4px; display: inline-block; background: transparent; transition: background 0.2s; }
+        .toggle-box.active, .fake-toggle[tabindex] .toggle-box { background: #e94560; }
+        a.submit-link { display: block; text-align: center; padding: 12px; background: #e94560; color: #fff; border-radius: 6px; font-size: 16px; text-decoration: none; margin-top: 20px; cursor: pointer; }
+        a.submit-link:hover { background: #c73e54; }
+    </style>
+</head>
+<body>
+<div class="form-card">
+    <h1>Complete Profile</h1>
+
+    <span class="e-title">Given Name</span>
+    <div contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
+
+    <span class="e-title">Surname</span>
+    <div contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
+
+    <span class="e-title">Mail Contact</span>
+    <div contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
+
+    <span class="e-title">Cell</span>
+    <div contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
+
+    <span class="e-title">Town</span>
+    <div contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
+
+    <div class="row">
+        <div>
+            <span class="e-title">Postal</span>
+            <div contenteditable="true" tabindex="0" data-placeholder="Code"></div>
+        </div>
+        <div>
+            <span class="e-title">Location</span>
+            <div contenteditable="true" tabindex="0" data-placeholder="Region"></div>
+        </div>
+    </div>
+
+    <div class="fake-toggle" tabindex="0" onclick="this.querySelector('.toggle-box').classList.toggle('active')">
+        <div class="toggle-box active"></div>
+        <span>Agreement Signed</span>
+    </div>
+    <div class="fake-toggle" tabindex="0" onclick="this.querySelector('.toggle-box').classList.toggle('active')">
+        <div class="toggle-box active"></div>
+        <span>Email Feed</span>
+    </div>
+
+    <a class="submit-link" tabindex="0" onclick="alert('Submitted!')">Finish Registration</a>
+</div>
+</body>
+</html>

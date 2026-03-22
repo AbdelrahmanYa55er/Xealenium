@@ -1,0 +1,9 @@
+build/
+.gradle/
+.idea/
+*.log
+*.zip
+*.png
+visual-baseline.json
+visual-healing-report.html
+bin/

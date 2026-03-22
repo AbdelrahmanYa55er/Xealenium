@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+}
+repositories {
+    mavenCentral()
+}
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
+    // Selenium (needed by visual engine + tests)
+    testImplementation 'org.seleniumhq.selenium:selenium-java:4.14.1'
+    // Healenium
+    testImplementation 'com.epam.healenium:healenium-web:3.4.5'
+    // SLF4J
+    testImplementation 'org.slf4j:slf4j-simple:2.0.9'
+    // Visual Engine — JSON baseline storage
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
+    testImplementation 'com.fasterxml.jackson.core:jackson-annotations:2.16.1'
+}
+test {
+    useJUnitPlatform()
+    systemProperty "testUrl", System.getProperty("testUrl", "http://localhost:8080/index.html")
+    // Show stdout from visual healing logs
+    testLogging {
+        showStandardStreams = true
+        events "passed", "skipped", "failed"
+    }
+}
