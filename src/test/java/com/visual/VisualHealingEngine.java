@@ -140,7 +140,9 @@ public class VisualHealingEngine {
 
             Object[] options = {"Confirm", "Try Next Best", "Refuse (Abort)"};
             JOptionPane pane = new JOptionPane(panel, JOptionPane.PLAIN_MESSAGE,
-                JOptionPane.YES_NO_CANCEL_OPTION, null, options, options[0]);
+                JOptionPane.YES_NO_CANCEL_OPTION, null, options, null);
+            pane.setInitialValue(null);
+            pane.setValue(JOptionPane.UNINITIALIZED_VALUE);
             JDialog dialog = pane.createDialog("Visual Healing Confirmation - " + key);
             dialog.setAlwaysOnTop(true);
             dialog.setModal(true);
@@ -148,6 +150,10 @@ public class VisualHealingEngine {
             dialog.setVisible(true);
 
             Object selectedValue = pane.getValue();
+            if (selectedValue == null || selectedValue == JOptionPane.UNINITIALIZED_VALUE) {
+                System.out.println("[INTERACTIVE] User closed dialog for " + key + ", treating as REFUSE");
+                break;
+            }
             int choice = -1;
             for (int j = 0; j < options.length; j++) {
                 if (options[j].equals(selectedValue)) { choice = j; break; }
@@ -504,6 +510,8 @@ public class VisualHealingEngine {
         }
     }
 }
+
+
 
 
 
