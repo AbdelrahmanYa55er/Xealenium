@@ -23,10 +23,18 @@ public final class ImageUtils {
                 JavascriptExecutor js = (JavascriptExecutor) driver;
                 long width = (long) js.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth, document.body.offsetWidth, document.documentElement.offsetWidth, document.documentElement.clientWidth);");
                 long height = (long) js.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight);");
-                driver.manage().window().setSize(new Dimension((int) width, (int) height));
+                
+                // Set window to a large enough size for full capture
+                // If it's maximized, setting size might fail in some drivers, so we wrap it
+                try {
+                    driver.manage().window().setSize(new Dimension((int) width, (int) (height + 100)));
+                } catch (Exception e) {
+                    // Fallback: stay as is, but try to scroll to top at least
+                    js.executeScript("window.scrollTo(0,0);");
+                }
             }
         } catch (Exception e) {
-            System.err.println("[IMAGE-UTILS] Failed to resize window for full page capture: " + e.getMessage());
+            System.err.println("[IMAGE-UTILS] Note: Could not fully resize window: " + e.getMessage());
         }
         
         byte[] bytes = screenshotBytes(driver);

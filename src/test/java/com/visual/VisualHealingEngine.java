@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.Map;
 
 public class VisualHealingEngine {
-    private static final double W_VIS=0.45, W_POS=0.30, W_TXT=0.25;
-    private static final double THR=0.55, MAX_D=600.0;
+    private static final double W_VIS=0.40, W_POS=0.30, W_TXT=0.30;
+    private static final double THR=0.45, MAX_D=600.0;
     private final BaselineStore store;
     private int healCount = 0;
     private boolean interactiveMode = false;
