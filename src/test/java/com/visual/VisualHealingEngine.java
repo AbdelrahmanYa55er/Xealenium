@@ -472,7 +472,7 @@ public class VisualHealingEngine {
 
     private boolean shouldCaptureBaseline(String pageUrl) {
         String explicit = System.getProperty("visual.captureBaseline");
-        if (explicit != null) {
+        if (explicit != null && !explicit.isBlank()) {
             return Boolean.parseBoolean(explicit);
         }
         return pageUrl != null && pageUrl.toLowerCase().contains("baseline");
