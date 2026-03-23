@@ -111,4 +111,7 @@ public class VisualDriver implements WebDriver,JavascriptExecutor,TakesScreensho
     @Override public void resetInputState(){((Interactive)wrapped).resetInputState();}
     public WebDriver getWrapped(){return wrapped;}
     public VisualHealingEngine getEngine(){return engine;}
+    public SmartLocatorResult buildLocatorFromPoint(int x, int y){
+        return new SmartLocatorBuilder(screenshotDriver).buildLocatorFromPoint(x, y);
+    }
 }

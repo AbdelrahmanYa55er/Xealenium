@@ -73,6 +73,7 @@ public class VisualHealingEngine {
             int baseSequence = baselineSequence(base, key, baseKind);
             int baseKindCount = baselineKindCount(base, baseKind);
             assignSequencePositions(candidateMeta);
+            SmartLocatorBuilder locatorBuilder = new SmartLocatorBuilder(d);
 
             List<CandidateWrapper> sortedCands = new ArrayList<>();
             List<HeatmapRenderer.Candidate> heatCands = new ArrayList<>();
@@ -84,9 +85,14 @@ public class VisualHealingEngine {
                 double kind=kindScore(baseKind, c.kind);
                 double seq=sequenceScore(baseSequence, baseKindCount, c.sequence, c.kindCount, baseKind, c.kind);
                 double score=W_VIS*vis+W_POS*pos+W_TXT*txt+W_KIND*kind+W_SEQ*seq;
+                SmartLocatorResult smartLocator = buildSmartLocator(d, locatorBuilder, c);
+                String selector = smartLocator != null
+                    ? smartLocator.getLocatorType() + ": " + smartLocator.getLocator()
+                    : c.selector;
+                String selectorStrategy = smartLocator != null ? smartLocator.getStrategy() : "visual-raw";
 
                 heatCands.add(new HeatmapRenderer.Candidate(c.x,c.y,c.w,c.h,score,c.text + " [" + c.kind + " #" + c.sequence + "]"));
-                sortedCands.add(new CandidateWrapper(score, c.originalIndex, c.selector, c.kind, c.sequence, vis, pos, txt, kind, seq, c.x + c.w/2, c.y + c.h/2));
+                sortedCands.add(new CandidateWrapper(score, c.originalIndex, selector, selectorStrategy, c.kind, c.sequence, vis, pos, txt, kind, seq, c.x + c.w/2, c.y + c.h/2));
             }
 
             sortedCands.sort(Comparator.comparingDouble((CandidateWrapper cw) -> cw.score).reversed());
@@ -124,9 +130,10 @@ public class VisualHealingEngine {
                 "<b>Candidate Rank:</b> %d of %d above threshold<br>" +
                 "<b>Candidate Kind:</b> %s<br>" +
                 "<b>Sequence:</b> #%d<br>" +
-                "<b>New CSS Selector:</b> <code>%s</code><br>" +
+                "<b>Locator Strategy:</b> %s<br>" +
+                "<b>New Locator:</b> <code>%s</code><br>" +
                 "<b>Score:</b> %.3f &nbsp;(visual=%.2f &nbsp;position=%.2f &nbsp;text=%.2f &nbsp;kind=%.2f &nbsp;seq=%.2f)</html>",
-                key, i+1, sorted.size(), cand.kind, cand.sequence, cand.selector, cand.score, cand.vis, cand.pos, cand.txt, cand.kindScore, cand.seqScore);
+                key, i+1, sorted.size(), cand.kind, cand.sequence, cand.strategy, cand.selector, cand.score, cand.vis, cand.pos, cand.txt, cand.kindScore, cand.seqScore);
             JLabel infoLabel = new JLabel(info);
             infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
             panel.add(infoLabel, BorderLayout.NORTH);
@@ -160,7 +167,7 @@ public class VisualHealingEngine {
             }
 
             if (choice == 0) {
-                System.out.println("[INTERACTIVE] User CONFIRMED " + key + " -> " + cand.selector);
+                System.out.println("[INTERACTIVE] User CONFIRMED " + key + " -> " + cand.selector + " strategy=" + cand.strategy);
                 return healAndReport(key, cand, totalCands, pageImg, heatCands, cand.originalIndex);
             } else if (choice == 1) {
                 System.out.println("[INTERACTIVE] User requested NEXT BEST for " + key);
@@ -210,11 +217,37 @@ public class VisualHealingEngine {
     private static class CandidateWrapper {
         final double score, vis, pos, txt, kindScore, seqScore;
         final int originalIndex, sequence, cx, cy;
-        final String selector, kind;
-        CandidateWrapper(double score, int originalIndex, String selector, String kind, int sequence,
+        final String selector, strategy, kind;
+        CandidateWrapper(double score, int originalIndex, String selector, String strategy, String kind, int sequence,
                          double vis, double pos, double txt, double kindScore, double seqScore, int cx, int cy) {
-            this.score = score; this.originalIndex = originalIndex; this.selector = selector; this.kind = kind; this.sequence = sequence;
+            this.score = score; this.originalIndex = originalIndex; this.selector = selector; this.strategy = strategy; this.kind = kind; this.sequence = sequence;
             this.vis = vis; this.pos = pos; this.txt = txt; this.kindScore = kindScore; this.seqScore = seqScore; this.cx = cx; this.cy = cy;
+        }
+    }
+
+    private SmartLocatorResult buildSmartLocator(WebDriver driver, SmartLocatorBuilder builder, CandidateMeta candidate) {
+        try {
+            WebElement candidateElement = resolveCandidateElement(driver, candidate.originalIndex);
+            if (candidateElement != null) {
+                return builder.buildLocatorForElement(candidateElement);
+            }
+            int px = candidate.x + Math.max(1, Math.min(candidate.w - 2, candidate.w / 2));
+            int py = candidate.y + Math.max(1, Math.min(candidate.h - 2, candidate.h / 2));
+            return builder.buildLocatorFromPoint(px, py);
+        } catch (Exception e) {
+            System.out.println("[SMART-LOCATOR] Fallback to raw visual selector for candidate " + candidate.originalIndex + " reason=" + e.getMessage());
+            return null;
+        }
+    }
+
+    private WebElement resolveCandidateElement(WebDriver driver, int candidateIndex) {
+        try {
+            Object raw = ((JavascriptExecutor) driver).executeScript(
+                "return window.__visualCandidates && window.__visualCandidates.length > arguments[0] ? window.__visualCandidates[arguments[0]] : null;",
+                candidateIndex);
+            return raw instanceof WebElement element ? element : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 
