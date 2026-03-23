@@ -231,8 +231,9 @@ public class VisualHealingEngine {
             if (candidateElement != null) {
                 return builder.buildLocatorForElement(candidateElement);
             }
-            int px = candidate.x + Math.max(1, Math.min(candidate.w - 2, candidate.w / 2));
-            int py = candidate.y + Math.max(1, Math.min(candidate.h - 2, candidate.h / 2));
+            int[] scroll = currentScrollOffset(driver);
+            int px = candidate.x - scroll[0] + Math.max(1, Math.min(candidate.w - 2, candidate.w / 2));
+            int py = candidate.y - scroll[1] + Math.max(1, Math.min(candidate.h - 2, candidate.h / 2));
             return builder.buildLocatorFromPoint(px, py);
         } catch (Exception e) {
             System.out.println("[SMART-LOCATOR] Fallback to raw visual selector for candidate " + candidate.originalIndex + " reason=" + e.getMessage());
@@ -249,6 +250,21 @@ public class VisualHealingEngine {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private int[] currentScrollOffset(WebDriver driver) {
+        try {
+            Object raw = ((JavascriptExecutor) driver).executeScript(
+                "return [" +
+                "Math.round(window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0)," +
+                "Math.round(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0)" +
+                "];");
+            if (raw instanceof List<?> values && values.size() >= 2) {
+                return new int[]{toInt(values.get(0)), toInt(values.get(1))};
+            }
+        } catch (Exception ignored) {
+        }
+        return new int[]{0, 0};
     }
 
     private void assignSequencePositions(List<CandidateMeta> candidates) {
@@ -409,12 +425,14 @@ public class VisualHealingEngine {
             +"var out=[];"
             +"for(var i=0;i<els.length;i++){"
             +"  var e=els[i], r=e.getBoundingClientRect();"
+            +"  var sx=Math.round(window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0);"
+            +"  var sy=Math.round(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);"
             +"  if(r.width<=0||r.height<=0) continue;"
             +"  var idx=window.__visualCandidates.length;"
             +"  window.__visualCandidates.push(e);"
             +"  out.push({"
-            +"    x:Math.round(r.left),"
-            +"    y:Math.round(r.top),"
+            +"    x:Math.round(r.left)+sx,"
+            +"    y:Math.round(r.top)+sy,"
             +"    w:Math.round(r.width),"
             +"    h:Math.round(r.height),"
             +"    text:elementText(e),"
@@ -465,13 +483,15 @@ public class VisualHealingEngine {
             +"  return 'generic';"
             +"}"
             +"var e=arguments[0], r=e.getBoundingClientRect(), parts=[];"
+            +"var sx=Math.round(window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0);"
+            +"var sy=Math.round(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);"
             +"push(parts, e.value);"
             +"push(parts, e.getAttribute('placeholder'));"
             +"push(parts, e.getAttribute('aria-label'));"
             +"push(parts, nodeText(e));"
             +"push(parts, nearestLabelText(e));"
             +"return {"
-            +"  x:Math.round(r.left), y:Math.round(r.top), w:Math.round(r.width), h:Math.round(r.height),"
+            +"  x:Math.round(r.left)+sx, y:Math.round(r.top)+sy, w:Math.round(r.width), h:Math.round(r.height),"
             +"  text:[...new Set(parts)].join(' | ').substring(0,120),"
             +"  kind:classify(e), tag:e.tagName.toLowerCase()"
             +"};",el);
@@ -501,6 +521,7 @@ public class VisualHealingEngine {
     }
 
     private static int iv(Map<String,Object> m,String k){Object v=m.get(k);if(v instanceof Number)return((Number)v).intValue();if(v instanceof String)try{return Integer.parseInt((String)v);}catch(Exception e){}return 0;}
+    private static int toInt(Object v){if(v instanceof Number)return((Number)v).intValue();if(v instanceof String)try{return Integer.parseInt((String)v);}catch(Exception e){}return 0;}
     private static String sv(Map<String,Object> m,String k){Object v=m.get(k);return v==null?"":v.toString();}
     public BaselineStore getStore(){return store;}
 
