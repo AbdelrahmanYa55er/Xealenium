@@ -1,5 +1,4 @@
 package com.visual;
-import org.openqa.selenium.Dimension;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
@@ -8,47 +7,106 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 public final class ImageUtils {
     private ImageUtils(){}
 
     /**
-     * Takes a full-page screenshot by dynamically resizing the window 
-     * to the document's maximum scroll height before capturing.
+     * Takes a stitched full-page screenshot in CSS-pixel coordinates so
+     * element metadata lines up with the captured image in both baseline and
+     * interactive healing flows.
      */
     public static BufferedImage screenshotPage(WebDriver driver) throws Exception {
+        if (!(driver instanceof JavascriptExecutor)) {
+            return ImageIO.read(new ByteArrayInputStream(screenshotBytes(driver)));
+        }
+
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        long totalWidth = jsLong(js,
+            "return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth," +
+            " document.body.offsetWidth, document.documentElement.offsetWidth," +
+            " document.documentElement.clientWidth, window.innerWidth || 0);");
+        long totalHeight = jsLong(js,
+            "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight," +
+            " document.body.offsetHeight, document.documentElement.offsetHeight," +
+            " document.documentElement.clientHeight, window.innerHeight || 0);");
+        long viewportWidth = Math.max(1L, jsLong(js,
+            "return Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);") );
+        long viewportHeight = Math.max(1L, jsLong(js,
+            "return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);") );
+
+        if (totalWidth <= viewportWidth && totalHeight <= viewportHeight) {
+            return ImageIO.read(new ByteArrayInputStream(screenshotBytes(driver)));
+        }
+
+        long originalX = jsLong(js, "return window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0;");
+        long originalY = jsLong(js, "return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;");
+
+        List<Integer> xs = tilePositions((int) totalWidth, (int) viewportWidth);
+        List<Integer> ys = tilePositions((int) totalHeight, (int) viewportHeight);
+        BufferedImage stitched = new BufferedImage((int) totalWidth, (int) totalHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = stitched.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
         try {
-            if (driver instanceof JavascriptExecutor) {
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                long width = (long) js.executeScript("return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth, document.body.offsetWidth, document.documentElement.offsetWidth, document.documentElement.clientWidth);");
-                long height = (long) js.executeScript("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight);");
-                
-                // Set window to a large enough size for full capture
-                // If it's maximized, setting size might fail in some drivers, so we wrap it
-                try {
-                    driver.manage().window().setSize(new Dimension((int) width, (int) (height + 100)));
-                } catch (Exception e) {
-                    // Fallback: stay as is, but try to scroll to top at least
-                    js.executeScript("window.scrollTo(0,0);");
+            for (int y : ys) {
+                for (int x : xs) {
+                    js.executeScript("window.scrollTo(arguments[0], arguments[1]);", x, y);
+                    Thread.sleep(80);
+
+                    BufferedImage tile = ImageIO.read(new ByteArrayInputStream(screenshotBytes(driver)));
+                    int drawW = Math.min((int) viewportWidth, stitched.getWidth() - x);
+                    int drawH = Math.min((int) viewportHeight, stitched.getHeight() - y);
+                    if (drawW <= 0 || drawH <= 0) continue;
+
+                    g.drawImage(tile, x, y, x + drawW, y + drawH, 0, 0, tile.getWidth(), tile.getHeight(), null);
                 }
             }
-        } catch (Exception e) {
-            System.err.println("[IMAGE-UTILS] Note: Could not fully resize window: " + e.getMessage());
+        } finally {
+            g.dispose();
+            js.executeScript("window.scrollTo(arguments[0], arguments[1]);", originalX, originalY);
         }
-        
-        byte[] bytes = screenshotBytes(driver);
-        return ImageIO.read(new ByteArrayInputStream(bytes));
+
+        return stitched;
+    }
+
+    private static List<Integer> tilePositions(int total, int viewport) {
+        List<Integer> positions = new ArrayList<>();
+        if (total <= 0 || viewport <= 0) {
+            positions.add(0);
+            return positions;
+        }
+        for (int pos = 0; pos < total; pos += viewport) {
+            positions.add(pos);
+        }
+        int last = Math.max(0, total - viewport);
+        if (positions.isEmpty() || positions.get(positions.size() - 1) != last) {
+            positions.add(last);
+        }
+        return positions;
+    }
+
+    private static long jsLong(JavascriptExecutor js, String script) {
+        Object value = js.executeScript(script);
+        if (value instanceof Number) return ((Number) value).longValue();
+        if (value instanceof String) {
+            try {
+                return Math.round(Double.parseDouble((String) value));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 0L;
     }
 
     private static byte[] screenshotBytes(WebDriver driver) {
-        // Direct cast first (most common case)
         if (driver instanceof TakesScreenshot) {
             return ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
         }
-        // Unwrap VisualDriver
         if (driver instanceof VisualDriver) {
-             return screenshotBytes(((VisualDriver) driver).getWrapped()); // wrapped should be screenshot driver
+             return screenshotBytes(((VisualDriver) driver).getWrapped());
         }
         throw new RuntimeException("Cannot take screenshot from driver: " + driver.getClass().getName());
     }

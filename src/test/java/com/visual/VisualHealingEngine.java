@@ -117,11 +117,6 @@ public class VisualHealingEngine {
                 String.format("%s  [Rank %d | Score %.3f]", key, i+1, cand.score));
 
             Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-            int w = heatmap.getWidth(), h = heatmap.getHeight();
-            if (h > screen.height - 250 || w > screen.width - 200) {
-                double scale = Math.min((screen.width - 200.0) / w, (screen.height - 250.0) / h);
-                heatmap = ImageUtils.scale(heatmap, (int)(w * scale), (int)(h * scale));
-            }
 
             JPanel panel = new JPanel(new BorderLayout(0, 10));
             String info = String.format(
@@ -509,5 +504,7 @@ public class VisualHealingEngine {
         }
     }
 }
+
+
 
 
