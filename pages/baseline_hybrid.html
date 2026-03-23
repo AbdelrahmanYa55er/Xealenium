@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hybrid Baseline Page</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", sans-serif;
+            background: linear-gradient(180deg, #f4f6fb 0%, #e9eef8 100%);
+            color: #24324a;
+        }
+        .shell {
+            max-width: 860px;
+            margin: 32px auto;
+            padding: 24px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 18px 48px rgba(36, 50, 74, 0.12);
+            padding: 28px;
+        }
+        h1 {
+            margin: 0 0 10px;
+            font-size: 34px;
+            color: #1e2d46;
+        }
+        .lede {
+            margin: 0 0 24px;
+            color: #5a6a84;
+            line-height: 1.5;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+        .stack {
+            margin-top: 18px;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .field label,
+        .group-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #5b6b85;
+        }
+        input,
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 11px 13px;
+            border: 1px solid #cbd6e7;
+            border-radius: 12px;
+            font-size: 15px;
+            background: #fbfcff;
+            color: #24324a;
+        }
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #4f7cff;
+            box-shadow: 0 0 0 4px rgba(79, 124, 255, 0.14);
+        }
+        .toggles {
+            display: grid;
+            gap: 10px;
+            margin-top: 22px;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border: 1px solid #d6e0ef;
+            border-radius: 14px;
+            background: #f8fbff;
+        }
+        .toggle-row input {
+            width: auto;
+            margin: 0;
+        }
+        .actions {
+            margin-top: 24px;
+        }
+        button {
+            width: 100%;
+            border: none;
+            border-radius: 14px;
+            background: #2d63ff;
+            color: #ffffff;
+            padding: 14px 18px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        #completion-state {
+            margin-top: 12px;
+            min-height: 24px;
+            color: #2b6d3f;
+            font-weight: 600;
+        }
+        @media (max-width: 760px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <section class="card">
+        <h1>Starter Workspace Setup</h1>
+        <p class="lede">This is the original working profile form. The mixed-recovery tests capture element baselines here before validating the updated page.</p>
+
+        <div class="grid">
+            <div class="field">
+                <label for="fname">Preferred Name</label>
+                <input id="fname" type="text" placeholder="Ava" value="Ava">
+            </div>
+            <div class="field">
+                <label for="lname">Family Name</label>
+                <input id="lname" type="text" placeholder="Stone" value="Stone">
+            </div>
+            <div class="field">
+                <label for="email">Primary Email</label>
+                <input id="email" type="email" placeholder="ava@workspace.io" value="ava@workspace.io">
+            </div>
+            <div class="field">
+                <label for="phone">Phone Number</label>
+                <input id="phone" type="tel" placeholder="+1 202 555 0184" value="+1 202 555 0184">
+            </div>
+            <div class="field">
+                <label for="city">Home City</label>
+                <input id="city" type="text" placeholder="Seattle" value="Seattle">
+            </div>
+            <div class="field">
+                <label for="zip">Postal Code</label>
+                <input id="zip" type="text" placeholder="98101" value="98101">
+            </div>
+        </div>
+
+        <div class="stack field">
+            <label for="country">Region</label>
+            <select id="country">
+                <option value="US" selected>United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+            </select>
+        </div>
+
+        <div class="toggles">
+            <label class="toggle-row" for="terms">
+                <input id="terms" type="checkbox" checked>
+                <span>Accept workspace terms</span>
+            </label>
+            <label class="toggle-row" for="newsletter">
+                <input id="newsletter" type="checkbox" checked>
+                <span>Send product updates</span>
+            </label>
+        </div>
+
+        <div class="actions">
+            <button id="submit-btn" type="button" onclick="document.getElementById('completion-state').textContent='Workspace created';">
+                Create Workspace
+            </button>
+            <div id="completion-state" aria-live="polite"></div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

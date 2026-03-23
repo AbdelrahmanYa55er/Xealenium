@@ -28,10 +28,12 @@ public class SmartLocatorBuilder {
 
     private final WebDriver driver;
     private final JavascriptExecutor js;
+    private final SemanticSignalExtractor semanticExtractor;
 
     public SmartLocatorBuilder(WebDriver driver) {
         this.driver = driver;
         this.js = (JavascriptExecutor) driver;
+        this.semanticExtractor = new SemanticSignalExtractor();
     }
 
     public SmartLocatorResult buildLocatorFromPoint(int x, int y) {
@@ -51,11 +53,12 @@ public class SmartLocatorBuilder {
     }
 
     private SmartLocatorResult buildLocator(ExtractedElement extracted, List<String> logs) {
-        log(logs, "detected normalized tag=%s text='%s' label='%s'", extracted.tagName, extracted.text, extracted.labelText);
+        log(logs, "detected normalized tag=%s text='%s' label='%s' accessible='%s' role='%s' autocomplete='%s'",
+            extracted.tagName, extracted.text, extracted.labelText, extracted.accessibleName, extracted.semanticRole, extracted.autocomplete);
         log(logs,
-            "attributes id='%s' name='%s' class='%s' data-testid='%s' data-test='%s' aria-label='%s' placeholder='%s' type='%s' parent='%s'",
+            "attributes id='%s' name='%s' class='%s' data-testid='%s' data-test='%s' aria-label='%s' placeholder='%s' type='%s' role='%s' autocomplete='%s' parent='%s'",
             extracted.id, extracted.name, extracted.className, extracted.dataTestId, extracted.dataTest,
-            extracted.ariaLabel, extracted.placeholder, extracted.type, extracted.parentText);
+            extracted.ariaLabel, extracted.placeholder, extracted.type, extracted.semanticRole, extracted.autocomplete, extracted.parentText);
 
         List<Candidate> generated = generateCandidates(extracted, logs);
         List<Candidate> accepted = new ArrayList<>();
@@ -77,19 +80,20 @@ public class SmartLocatorBuilder {
             .map(c -> new SmartLocatorResult.LocatorCandidate(c.locatorType, c.locator, c.score, c.strategy))
             .toList();
         log(logs, "selected %s=%s strategy=%s score=%.3f", best.locatorType, best.locator, best.strategy, best.score);
-        return new SmartLocatorResult(best.locatorType, best.locator, best.score, best.strategy, extracted.tagName, top, logs);
+        return new SmartLocatorResult(best.locatorType, best.locator, best.score, best.strategy,
+            extracted.tagName, extracted.accessibleName, extracted.semanticRole, extracted.autocomplete, top, logs);
     }
 
     @SuppressWarnings("unchecked")
     private ExtractedElement detectElementFromPoint(int x, int y) {
         Object raw = js.executeScript(locatorExtractionScript("document.elementFromPoint(arguments[0], arguments[1])"), x, y);
-        return toExtractedElement(raw, "No DOM element found at point (" + x + "," + y + ")");
+        return withSemanticSignals(toExtractedElement(raw, "No DOM element found at point (" + x + "," + y + ")"));
     }
 
     @SuppressWarnings("unchecked")
     private ExtractedElement detectElementFromElement(WebElement element) {
         Object raw = js.executeScript(locatorExtractionScript("arguments[0]"), element);
-        return toExtractedElement(raw, "Could not normalize DOM element " + element);
+        return withSemanticSignals(toExtractedElement(raw, "Could not normalize DOM element " + element));
     }
 
     private String locatorExtractionScript(String startExpression) {
@@ -97,10 +101,46 @@ public class SmartLocatorBuilder {
             function trim(v) { return v ? String(v).trim() : ''; }
             function textOf(el) { return el && el.innerText ? el.innerText.replace(/\\s+/g, ' ').trim() : ''; }
             function attr(el, name) { return el ? trim(el.getAttribute(name)) : ''; }
+            function referencedText(ids) {
+              if (!ids) return '';
+              var parts = [];
+              ids.split(/\\s+/).forEach(function(id) {
+                if (!id) return;
+                var ref = document.getElementById(id);
+                var txt = textOf(ref);
+                if (txt) parts.push(txt);
+              });
+              return parts.join(' ');
+            }
+            function explicitRole(el) {
+              return attr(el, 'role').toLowerCase();
+            }
+            function computedRole(el) {
+              var role = explicitRole(el);
+              if (role) return role;
+              if (!el) return '';
+              var tag = el.tagName.toLowerCase();
+              var type = attr(el, 'type').toLowerCase();
+              if (tag === 'button') return 'button';
+              if (tag === 'a' && attr(el, 'href')) return 'link';
+              if (tag === 'select') return 'combobox';
+              if (tag === 'textarea') return 'textbox';
+              if (tag === 'input') {
+                if (type === 'checkbox') return 'checkbox';
+                if (type === 'radio') return 'radio';
+                if (type === 'button' || type === 'submit' || type === 'reset') return 'button';
+                return 'textbox';
+              }
+              if (attr(el, 'contenteditable').toLowerCase() === 'true') return 'textbox';
+              if (el.onclick) return 'button';
+              var tabIndex = el.getAttribute('tabindex');
+              if (tabIndex !== null && Number(tabIndex) >= 0 && textOf(el)) return 'button';
+              return tag;
+            }
             function isClickable(el) {
               if (!el) return false;
               var tag = el.tagName.toLowerCase();
-              var role = attr(el, 'role').toLowerCase();
+              var role = computedRole(el);
               if (tag === 'button' || tag === 'a' || tag === 'input' || tag === 'select' || tag === 'textarea') return true;
               if (attr(el, 'contenteditable').toLowerCase() === 'true') return true;
               if (role === 'button' || role === 'link' || role === 'checkbox' || role === 'switch' || role === 'radio') return true;
@@ -119,6 +159,10 @@ public class SmartLocatorBuilder {
             }
             function nearestLabelText(el) {
               if (!el) return '';
+              var labelledBy = referencedText(attr(el, 'aria-labelledby'));
+              if (labelledBy) return labelledBy;
+              var wrappedLabel = el.closest('label');
+              if (wrappedLabel && textOf(wrappedLabel)) return textOf(wrappedLabel);
               if (el.id) {
                 var byFor = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
                 if (byFor && textOf(byFor)) return textOf(byFor);
@@ -141,6 +185,22 @@ public class SmartLocatorBuilder {
                 current = parent;
               }
               return '';
+            }
+            function accessibleName(el) {
+              if (!el) return '';
+              var labelledBy = referencedText(attr(el, 'aria-labelledby'));
+              if (labelledBy) return labelledBy;
+              var ariaLabel = attr(el, 'aria-label');
+              if (ariaLabel) return ariaLabel;
+              var labelText = nearestLabelText(el);
+              if (labelText) return labelText;
+              var title = attr(el, 'title');
+              if (title) return title;
+              var placeholder = attr(el, 'placeholder') || attr(el, 'data-placeholder');
+              if (placeholder) return placeholder;
+              var value = attr(el, 'value');
+              if (value && (computedRole(el) === 'button' || el.tagName.toLowerCase() === 'input')) return value;
+              return textOf(el);
             }
             function nearestStableAncestor(el) {
               var current = el ? el.parentElement : null;
@@ -181,11 +241,13 @@ public class SmartLocatorBuilder {
               dataTest: attr(target, 'data-test'),
               ariaLabel: attr(target, 'aria-label'),
               placeholder: attr(target, 'placeholder') || attr(target, 'data-placeholder'),
+              accessibleName: accessibleName(target),
               type: attr(target, 'type'),
               text: textOf(target),
               labelText: nearestLabelText(target),
               parentText: textOf(target.parentElement),
-              role: attr(target, 'role'),
+              role: computedRole(target),
+              autocomplete: attr(target, 'autocomplete'),
               contentEditable: attr(target, 'contenteditable'),
               ancestorId: ancestor.id,
               ancestorDataTestId: ancestor.dataTestId,
@@ -212,17 +274,47 @@ public class SmartLocatorBuilder {
             str(meta.get("dataTest")),
             str(meta.get("ariaLabel")),
             str(meta.get("placeholder")),
+            normalizeSpace(str(meta.get("accessibleName"))),
             str(meta.get("type")),
             normalizeSpace(str(meta.get("text"))),
             normalizeSpace(str(meta.get("labelText"))),
             normalizeSpace(str(meta.get("parentText"))),
             str(meta.get("role")),
+            str(meta.get("autocomplete")),
             str(meta.get("contentEditable")),
             str(meta.get("ancestorId")),
             str(meta.get("ancestorDataTestId")),
             str(meta.get("ancestorDataTest")),
             str(meta.get("ancestorClassName")),
             str(meta.get("ancestorTagName"))
+        );
+    }
+
+    private ExtractedElement withSemanticSignals(ExtractedElement extracted) {
+        SemanticSignals signals = semanticExtractor.extract(driver, extracted.element);
+        return new ExtractedElement(
+            extracted.element,
+            extracted.tagName,
+            extracted.id,
+            extracted.name,
+            extracted.className,
+            extracted.dataTestId,
+            extracted.dataTest,
+            extracted.ariaLabel,
+            extracted.placeholder,
+            firstNonBlank(signals.getAccessibleName(), extracted.accessibleName),
+            extracted.type,
+            extracted.text,
+            extracted.labelText,
+            extracted.parentText,
+            firstNonBlank(signals.getSemanticRole(), extracted.semanticRole),
+            firstNonBlank(signals.getAutocomplete(), extracted.autocomplete),
+            extracted.contentEditable,
+            extracted.ancestorId,
+            extracted.ancestorDataTestId,
+            extracted.ancestorDataTest,
+            extracted.ancestorClassName,
+            extracted.ancestorTagName
         );
     }
 
@@ -246,6 +338,12 @@ public class SmartLocatorBuilder {
             addCandidate(candidates, seen, "css",
                 extracted.tagName + "[name=\"" + cssValue(extracted.name) + "\"]",
                 "name", 0.82, 0.88, logs);
+        }
+        if (isStableValue(extracted.autocomplete)) {
+            String tag = extracted.tagName.isBlank() ? "" : extracted.tagName;
+            addCandidate(candidates, seen, "css",
+                tag + "[autocomplete=\"" + cssValue(extracted.autocomplete) + "\"]",
+                "autocomplete", 0.86, 0.94, logs);
         }
         if (isStableValue(extracted.ariaLabel)) {
             addCandidate(candidates, seen, "css",
@@ -387,12 +485,12 @@ public class SmartLocatorBuilder {
     private static boolean isTextAction(ExtractedElement extracted) {
         return Objects.equals(extracted.tagName, "button")
             || Objects.equals(extracted.tagName, "a")
-            || Objects.equals(extracted.role, "button")
-            || Objects.equals(extracted.role, "link");
+            || Objects.equals(extracted.semanticRole, "button")
+            || Objects.equals(extracted.semanticRole, "link");
     }
 
     private static boolean isClickableContainer(ExtractedElement extracted) {
-        return !extracted.text.isBlank() && (!extracted.role.isBlank()
+        return !extracted.text.isBlank() && (!extracted.semanticRole.isBlank()
             || extracted.contentEditable.equalsIgnoreCase("true")
             || isStableClassToken(primaryStableClass(extracted.className)));
     }
@@ -406,7 +504,7 @@ public class SmartLocatorBuilder {
     private static String xpathTagPredicate(ExtractedElement extracted) {
         if (extracted.contentEditable.equalsIgnoreCase("true")) return "@contenteditable='true'";
         if (Set.of("input", "textarea", "select", "button", "a").contains(extracted.tagName)) return "self::" + extracted.tagName;
-        if (!extracted.role.isBlank()) return "@role='" + extracted.role + "'";
+        if (!extracted.semanticRole.isBlank()) return "@role='" + extracted.semanticRole + "'";
         return "self::" + extracted.tagName;
     }
 
@@ -511,6 +609,10 @@ public class SmartLocatorBuilder {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
+    private static String firstNonBlank(String primary, String fallback) {
+        return normalizeSpace(primary).isBlank() ? normalizeSpace(fallback) : normalizeSpace(primary);
+    }
+
     private static void log(List<String> logs, String format, Object... args) {
         String line = LOG_PREFIX + " " + String.format(Locale.US, format, args);
         logs.add(line);
@@ -545,11 +647,13 @@ public class SmartLocatorBuilder {
         final String dataTest;
         final String ariaLabel;
         final String placeholder;
+        final String accessibleName;
         final String type;
         final String text;
         final String labelText;
         final String parentText;
-        final String role;
+        final String semanticRole;
+        final String autocomplete;
         final String contentEditable;
         final String ancestorId;
         final String ancestorDataTestId;
@@ -558,8 +662,8 @@ public class SmartLocatorBuilder {
         final String ancestorTagName;
 
         ExtractedElement(WebElement element, String tagName, String id, String name, String className,
-                         String dataTestId, String dataTest, String ariaLabel, String placeholder, String type,
-                         String text, String labelText, String parentText, String role, String contentEditable,
+                         String dataTestId, String dataTest, String ariaLabel, String placeholder, String accessibleName, String type,
+                         String text, String labelText, String parentText, String semanticRole, String autocomplete, String contentEditable,
                          String ancestorId, String ancestorDataTestId, String ancestorDataTest,
                          String ancestorClassName, String ancestorTagName) {
             this.element = element;
@@ -571,11 +675,13 @@ public class SmartLocatorBuilder {
             this.dataTest = dataTest;
             this.ariaLabel = ariaLabel;
             this.placeholder = placeholder;
+            this.accessibleName = accessibleName;
             this.type = type;
             this.text = text;
             this.labelText = labelText;
             this.parentText = parentText;
-            this.role = role;
+            this.semanticRole = semanticRole;
+            this.autocomplete = autocomplete;
             this.contentEditable = contentEditable;
             this.ancestorId = ancestorId;
             this.ancestorDataTestId = ancestorDataTestId;

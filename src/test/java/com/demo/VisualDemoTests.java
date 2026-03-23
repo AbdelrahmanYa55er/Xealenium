@@ -42,7 +42,7 @@ public class VisualDemoTests {
     @Test
     public void testFullRegistrationFlow() throws Exception {
         driver.get(testUrl);
-        Thread.sleep(2000);
+        Thread.sleep(800);
 
         System.out.println("--- Starting form fill ---");
 

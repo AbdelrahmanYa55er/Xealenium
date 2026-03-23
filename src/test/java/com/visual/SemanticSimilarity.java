@@ -1,64 +1,67 @@
 package com.visual;
 import java.util.*;
 /**
- * Lightweight semantic text similarity.
- * Combines Levenshtein (edit distance) with a built-in synonym dictionary
- * for common form-field terms.
- *
- * score = max(levenshtein_sim, synonym_sim, word_overlap_sim)
+ * Lightweight lexical similarity used as a neutral fallback below the
+ * accessibility and embedding layers.
  */
 public final class SemanticSimilarity {
+    private static final WordNetSemanticService WORDNET = WordNetSemanticService.getInstance();
+    private static final Set<String> GENERIC_TOKENS = Set.of(
+        "field", "form", "input", "label", "value", "entry", "control", "choice",
+        "name", "line", "contact", "mark", "address", "code", "first", "last",
+        "given", "family"
+    );
+
     private SemanticSimilarity(){}
 
-    // Synonym clusters: words within a cluster are semantically equivalent
-    private static final String[][] SYNONYMS = {
-        {"first name","given name","fname","forename","first","name"},
-        {"last name","surname","lname","family name","last"},
-        {"email","mail","e-mail","email address","mail contact"},
-        {"phone","telephone","tel","mobile","cell","phone number"},
-        {"city","town","municipality","home city"},
-        {"zip","zip code","postal","postal code","postcode"},
-        {"country","nation","location","region"},
-        {"terms","accept","agree","agreement","policy","terms and conditions","agreement signed"},
-        {"newsletter","subscribe","mailing list","email feed","news"},
-        {"register","submit","sign up","create account","finish","finish registration","register now"},
-        {"password","pass","secret","pwd"},
-        {"username","user","login","user name"},
-        {"address","street","addr"}
-    };
-
     /**
-     * Multi-strategy similarity: returns the best of three comparisons.
-     *   1. Levenshtein (edit distance)
-     *   2. Synonym cluster match
-     *   3. Word-overlap (Jaccard on tokens)
+     * Compatibility wrapper for older callers.
+     * The project no longer uses synonym dictionaries, so this delegates to
+     * the neutral lexical scorer.
      */
     public static double score(String a, String b) {
+        return semanticScore(a, b);
+    }
+
+    /**
+     * Lightweight semantic comparison without synonym dictionaries.
+     * Useful as a neutral, framework-friendly baseline before embeddings.
+     */
+    public static double simpleScore(String a, String b) {
         if (a == null) a = "";
         if (b == null) b = "";
-        a = a.trim().toLowerCase();
-        b = b.trim().toLowerCase();
+        a = normalize(a);
+        b = normalize(b);
         if (a.isEmpty() && b.isEmpty()) return 1.0;
         if (a.isEmpty() || b.isEmpty()) return 0.0;
         if (a.equals(b)) return 1.0;
 
-        double levSim  = TextSimilarity.score(a, b);         // edit distance
-        double synSim  = synonymScore(a, b);                  // domain synonyms
-        double wordSim = wordOverlap(a, b);                   // token Jaccard
-        return Math.max(levSim, Math.max(synSim, wordSim));
+        double levSim = TextSimilarity.score(a, b);
+        double wordSim = wordOverlap(a, b);
+        double containsSim = containmentScore(a, b);
+        return Math.max(levSim, Math.max(wordSim, containsSim));
     }
 
-    /** If both strings belong to the same synonym cluster, return 1.0. */
-    private static double synonymScore(String a, String b) {
-        for (String[] cluster : SYNONYMS) {
-            boolean hasA = false, hasB = false;
-            for (String syn : cluster) {
-                if (a.contains(syn) || syn.contains(a)) hasA = true;
-                if (b.contains(syn) || syn.contains(b)) hasB = true;
-            }
-            if (hasA && hasB) return 1.0;
+    /**
+     * Broader semantic comparison that layers a general lexical resource on top
+     * of the lightweight lexical fallback.
+     */
+    public static double semanticScore(String a, String b) {
+        double lexical = simpleScore(a, b);
+        if (!WORDNET.isAvailable()) {
+            return lexical;
         }
-        return 0.0;
+        List<String> leftTokens = semanticTokens(a);
+        List<String> rightTokens = semanticTokens(b);
+        double lexicalKnowledge = 0.0;
+        if (leftTokens.size() == 1 && rightTokens.size() == 1) {
+            lexicalKnowledge = WORDNET.phraseSimilarity(leftTokens.get(0), rightTokens.get(0));
+        } else if (leftTokens.size() == 1 && rightTokens.size() <= 3) {
+            lexicalKnowledge = bestSingleTokenMatch(leftTokens.get(0), rightTokens);
+        } else if (rightTokens.size() == 1 && leftTokens.size() <= 3) {
+            lexicalKnowledge = bestSingleTokenMatch(rightTokens.get(0), leftTokens);
+        }
+        return Math.max(lexical, lexicalKnowledge);
     }
 
     /** Jaccard coefficient on word tokens. */
@@ -71,5 +74,48 @@ public final class SemanticSimilarity {
         intersection.retainAll(setB);
         if (union.isEmpty()) return 0.0;
         return (double) intersection.size() / union.size();
+    }
+
+    private static double containmentScore(String a, String b) {
+        String longer = a.length() >= b.length() ? a : b;
+        String shorter = longer.equals(a) ? b : a;
+        if (shorter.length() < 4) return 0.0;
+        return longer.contains(shorter) ? 0.85 : 0.0;
+    }
+
+    private static String normalize(String value) {
+        if (value == null) return "";
+        return value.trim().toLowerCase();
+    }
+
+    private static int tokenCount(String value) {
+        String normalized = normalize(value).replaceAll("[^a-z0-9]+", " ").trim();
+        if (normalized.isBlank()) {
+            return 0;
+        }
+        return normalized.split("\\s+").length;
+    }
+
+    private static List<String> semanticTokens(String value) {
+        String normalized = normalize(value).replaceAll("[^a-z0-9]+", " ").trim();
+        if (normalized.isBlank()) {
+            return List.of();
+        }
+        List<String> tokens = new ArrayList<>();
+        for (String token : normalized.split("\\s+")) {
+            if (token.isBlank() || GENERIC_TOKENS.contains(token)) {
+                continue;
+            }
+            tokens.add(token);
+        }
+        return tokens;
+    }
+
+    private static double bestSingleTokenMatch(String token, List<String> phraseTokens) {
+        double best = 0.0;
+        for (String candidate : phraseTokens) {
+            best = Math.max(best, WORDNET.phraseSimilarity(token, candidate));
+        }
+        return best;
     }
 }

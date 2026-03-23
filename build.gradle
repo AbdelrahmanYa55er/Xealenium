@@ -16,6 +16,12 @@ dependencies {
     // Visual Engine - JSON baseline storage
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
     testImplementation 'com.fasterxml.jackson.core:jackson-annotations:2.16.1'
+    // Optional local embeddings
+    testImplementation 'com.microsoft.onnxruntime:onnxruntime:1.20.0'
+    testImplementation 'ai.djl.huggingface:tokenizers:0.35.1'
+    // General lexical semantics without project-owned synonym dictionaries
+    testImplementation 'net.sf.extjwnl:extjwnl:2.0.5'
+    testRuntimeOnly 'net.sf.extjwnl:extjwnl-data-wn31:1.2'
 }
 test {
     useJUnitPlatform()
@@ -24,6 +30,13 @@ test {
     systemProperty 'report', System.getProperty('report', 'true')
     systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', '')
     systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', 'false')
+    systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', '')
+    systemProperty 'visual.embedding.modelDir', System.getProperty('visual.embedding.modelDir', '')
+    systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', '')
+    systemProperty 'visual.embedding.tokenizerFile', System.getProperty('visual.embedding.tokenizerFile', '')
+    systemProperty 'visual.embedding.maxLength', System.getProperty('visual.embedding.maxLength', '128')
+    systemProperty 'visual.embedding.modelName', System.getProperty('visual.embedding.modelName', '')
+    systemProperty 'visual.embedding.pooling', System.getProperty('visual.embedding.pooling', '')
     testLogging {
         showStandardStreams = true
         events 'passed', 'skipped', 'failed'

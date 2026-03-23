@@ -18,7 +18,10 @@ public class BaselineStore {
             int existingIndex = indexOf(all, s.pageUrl, s.locator);
             if (existingIndex >= 0) {
                 ElementSnapshot existing = all.get(existingIndex);
-                boolean missingMetadata = isBlank(existing.kind) || isBlank(existing.tagName);
+                boolean missingMetadata = isBlank(existing.kind)
+                    || isBlank(existing.tagName)
+                    || isBlank(existing.accessibleName)
+                    || isBlank(existing.semanticRole);
                 if (!replaceExisting && !missingMetadata) return false;
                 all.remove(existingIndex);
             }

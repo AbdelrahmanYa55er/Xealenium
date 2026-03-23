@@ -7,3 +7,6 @@ build/
 visual-baseline.json
 visual-healing-report.html
 bin/
+models/*
+!models/README.md
+temp-*.js

@@ -1,45 +1,56 @@
-# Xealenium - Visual Self-Healing Engine for Selenium
+# Xealenium
 
-Xealenium is a Selenium demo project that combines three recovery layers:
+Xealenium is an experimental Selenium self-healing framework that layers:
 
-1. Native Selenium locator lookup
-2. Healenium self-healing
-3. A custom visual healing engine with smart locator generation
+1. Native Selenium lookup
+2. Healenium recovery
+3. Visual recovery with semantic reranking and smart locator generation
 
-When a locator fails, the visual engine compares the failed element's saved baseline snapshot against the current page using visual similarity, position, text, element kind, and sequence. Once it picks the best candidate, it generates a human-quality Selenium locator with `SmartLocatorBuilder` so the healed result is semantic instead of a fragile raw DOM path.
+The project is no longer just a visual demo. It now includes:
+
+- protected page-scoped baselines
+- full-page heatmaps
+- human-in-the-loop confirmation
+- semantic signal extraction from DOM and Chromium accessibility data
+- smart locator generation from points or healed elements
+- optional local ONNX embeddings for open-world semantic matching
+- multiple page sets and recovery-mode tests
 
 ## Requirements
 
 - Java 17+
-- Chrome browser installed
+- Chrome installed
 - Windows PowerShell or `cmd` for the helper scripts
 
-## Demo Pages
+## Page Sets
 
-- `pages/baseline.html` - original page used to capture baseline snapshots
-- `pages/updated.html` - changed page used to demonstrate healing
+Current demo assets in [`pages`](pages):
+
+- `baseline.html` / `updated.html`
+  - the original baseline vs changed DOM pair
+- `baseline_hybrid.html` / `updated_hybrid.html`
+  - mixed recovery-mode pair where some fields still work directly, some need Healenium, and some need visual healing
+- `updated_variant.html`
+  - reordered and structurally changed page for tougher semantic testing
+- `semantic_signals.html`
+  - fixture page for semantic extraction and smart-locator tests
 
 ## Quick Start
 
-### One-command flow
-
-Run:
+### One-command runner
 
 ```powershell
 .\run.bat
 ```
 
-This script:
+This does two steps:
 
-1. Rebuilds the visual baseline from `pages/baseline.html`
-2. Runs the healing flow against `pages/updated.html`
-3. Generates heatmaps and the HTML report
+1. rebuilds the baseline from `pages/baseline.html`
+2. runs healing on `pages/updated.html`
 
-By default, `run.bat` is intended for the guided demo flow. If interactive mode is enabled in the script, the run will pause on each heal and wait for explicit human confirmation.
+If a local model exists at `models\gte-small-onnx`, the runner now enables embeddings automatically. Otherwise it runs without embeddings.
 
-### Wizard flow
-
-If you want prompts for rebuild/report/interactive options, run:
+### Wizard runner
 
 ```powershell
 .\run_wizard.bat
@@ -51,187 +62,287 @@ or:
 .\run_wizard.ps1
 ```
 
-## Manual Commands
+The wizard prompts for:
 
-### Baseline capture
+- interactive mode
+- report generation
+- baseline rebuild
+
+It also auto-detects the local embedding model if present.
+
+### Model bootstrap
+
+The repo does not commit the ONNX model itself. Instead, download it locally into `models\gte-small-onnx`:
 
 ```powershell
-.\gradlew.bat --no-daemon test --tests "com.demo.VisualDemoTests" -DtestUrl="file:///C:/PATH_TO_PROJECT/pages/baseline.html" -Dinteractive=false -Dreport=false -Dvisual.captureBaseline=true -Dvisual.captureBaseline.refresh=true
+.\scripts\download-model.ps1
 ```
 
-### Healing run
+Model setup details are documented in [`models/README.md`](models/README.md).
+
+## Useful Test Commands
+
+### Core demo flow
 
 ```powershell
-.\gradlew.bat --no-daemon test --tests "com.demo.VisualDemoTests" -DtestUrl="file:///C:/PATH_TO_PROJECT/pages/updated.html" -Dinteractive=true -Dreport=true
+.\gradlew.bat --no-daemon test --tests "com.demo.VisualDemoTests"
 ```
 
-## How It Works
+### Multi-page semantic matrix
 
-### Baseline learning
+```powershell
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.VisualPageMatrixTests"
+```
 
-During the baseline run, the engine stores element snapshots in `visual-baseline.json`. Each snapshot includes:
+### Hybrid recovery-mode suite
 
-- locator key
-- full-page coordinates
-- element size
-- cropped element image
-- text context
+```powershell
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.HybridRecoveryModeTests"
+```
+
+### Interactive run
+
+```powershell
+.\gradlew.bat --no-daemon "-Dinteractive=true" "-Dreport=true" test --tests "com.demo.VisualDemoTests"
+```
+
+### Embedding-enabled run
+
+```powershell
+.\gradlew.bat --no-daemon `
+  "-Dvisual.embedding.enabled=true" `
+  "-Dvisual.embedding.modelDir=C:/PATH_TO_MODEL_DIR" `
+  "-Dvisual.embedding.modelName=gte-small" `
+  --rerun-tasks test --tests "com.demo.VisualPageMatrixTests"
+```
+
+## Recovery Pipeline
+
+### 1. Baseline capture
+
+During the learning run, Xealenium stores page-scoped snapshots in `visual-baseline.json`.
+
+Each snapshot includes:
+
+- locator
 - page URL
-- inferred element kind
+- full-page coordinates
+- element image
+- visible text
+- element kind
+- accessible name
+- semantic role
+- autocomplete
+- semantic fingerprint
+- optional embedding vector
 
-Baselines are page-scoped and protected from accidental overwrite during healing runs unless refresh is explicitly enabled.
+Existing baseline entries are protected from accidental overwrite unless refresh is explicitly enabled.
 
-### Healing
+### 2. Recovery order
 
-When Selenium and Healenium both fail:
+When a locator fails during a test:
 
-1. The visual engine enumerates candidate elements on the page
-2. It scores them using visual, positional, textual, kind, and sequence similarity
-3. It chooses the best candidate above threshold
-4. It generates a stable locator using `SmartLocatorBuilder`
-5. It records the healed locator in the report and heatmap artifacts
+1. Selenium tries first
+2. Healenium tries second
+3. `VisualHealingEngine` runs third
 
-### Smart locator generation
+That third phase is the “hard drift” path, where the DOM contract is assumed to have changed enough that the old selector shape is no longer worth preserving.
 
-`SmartLocatorBuilder` supports:
+### 3. Visual healing
+
+The visual engine:
+
+1. collects candidate controls from the current page
+2. compares them against the baseline snapshot
+3. scores them with visual, positional, textual, structural, and semantic features
+4. chooses the best candidate above threshold
+5. generates a new robust locator with `SmartLocatorBuilder`
+6. records the heal in the report and heatmap artifacts
+
+## Semantic Stack
+
+Xealenium now uses shared semantic extraction instead of separate ad-hoc heuristics in different classes.
+
+### Semantic providers
+
+- `DomSemanticProvider`
+  - extracts accessible-name-like signals, role heuristics, labels, placeholder, description text, section context, and parent context from the DOM
+- `AccessibilityTreeSemanticProvider`
+  - attempts to read Chromium accessibility semantics via CDP
+- `SemanticSignalExtractor`
+  - merges both and prefers stronger AX values when available
+
+### Current semantic signals
+
+- accessible name
+- semantic role
+- `autocomplete`
+- label text
+- placeholder / `data-placeholder`
+- description text
+- section context
+- parent context
+- input type
+
+### Lexical and semantic matching
+
+Current non-embedding matching uses:
+
+- normalized text similarity
+- field-level semantic comparison
+- WordNet-backed lexical similarity in `WordNetSemanticService`
+
+This reduces dependence on a handwritten synonym dictionary while still keeping the system deterministic when embeddings are off.
+
+## Smart Locator Builder
+
+`SmartLocatorBuilder` turns a screen point or healed `WebElement` into a stable Selenium locator.
+
+### Input
+
+- `buildLocatorFromPoint(int x, int y)`
+- direct element-based generation for already-healed candidates
+
+### Flow
+
+1. detect the element
+2. normalize wrappers, icons, and decorative children to a meaningful control
+3. extract semantic attributes and nearby context
+4. generate locator candidates
+5. validate uniqueness and exact identity
+6. rank accepted candidates
+7. return the best locator plus fallbacks and debug logs
+
+### Candidate strategies
 
 - `data-testid` / `data-test`
 - stable `id`
 - `name`
 - `aria-label`
-- placeholder-based selectors
+- placeholder and contenteditable placeholder
 - label-based XPath
 - class + attribute combinations
-- text-based selectors for meaningful clickable elements
+- class + text XPath for meaningful clickable elements
+- limited ancestor + attribute combinations
 
-It rejects non-unique candidates and avoids absolute XPath or deep DOM chains unless it has no better option.
+### Rejection rules
 
-### Smart locator builder flow
+- no absolute XPath
+- no non-unique selectors
+- no wrong-element selectors
+- no obviously dynamic ids
+- no layout-heavy DOM chains unless there is no better option
 
-The locator builder is intentionally separate from the visual matcher. Visual healing first finds the most likely DOM element. After that, `SmartLocatorBuilder` converts that element into a robust Selenium locator.
+## Local Embeddings
 
-Its flow is:
+Embeddings are optional and local-only.
 
-1. Detect the target element from either screen coordinates or a concrete `WebElement`
-2. Normalize the DOM target so inner spans, icons, and decorative wrappers resolve to a meaningful control
-3. Extract semantic attributes and surrounding context
-4. Generate multiple locator candidates
-5. Validate each candidate for uniqueness and exact element identity
-6. Score and rank the valid candidates
-7. Return the best locator plus fallback candidates and debug logs
+Current verified setup:
 
-### What the builder extracts
+- model: `gte-small`
+- runtime: ONNX Runtime Java
+- tokenizer: DJL Hugging Face tokenizers
 
-For each detected element, the builder collects:
+### Fingerprints
 
-- `id`
-- `name`
-- `class`
-- `data-testid`
-- `data-test`
-- `aria-label`
-- `placeholder` / `data-placeholder`
-- tag name
-- type
-- visible text
-- nearest label-like text
-- parent text
-- nearest stable ancestor information
+`EmbeddingFingerprintBuilder` creates a multi-line semantic fingerprint from:
 
-This is especially important for non-standard controls such as:
+- locator tokens
+- element kind
+- tag
+- role
+- input type
+- accessible name
+- label
+- placeholder
+- description
+- autocomplete
+- section context
+- parent context
+- text
+- aggregated semantic summary lines
 
-- `contenteditable` fields
-- clickable `div` containers
-- fake toggles
-- links that behave like buttons
+### Why embeddings are optional
 
-### Candidate strategies
+The framework still works without a model. That matters for portability and CI, and it lets you compare deterministic scoring against model-assisted scoring.
 
-The builder generates several locator strategies and keeps only the ones that are unique and point to the exact same element:
+### Launcher behavior
 
-- test attribute selectors
-- stable `id`
-- `name`
-- `aria-label`
-- placeholder selectors
-- label-based XPath
-- class + text XPath for meaningful clickable containers
-- ancestor + attribute combinations
+The helper scripts now auto-enable embeddings when both of these files exist:
 
-The goal is not to preserve the old selector shape. Phase 3 is meant for cases where the DOM has changed enough that the original locator contract is no longer worth imitating.
+- `models\gte-small-onnx\model.onnx`
+- `models\gte-small-onnx\tokenizer.json`
 
-### Candidate rejection rules
-
-The builder rejects:
-
-- non-unique selectors
-- selectors that resolve to the wrong element
-- dynamic-looking ids and attributes
-- generic classes such as layout wrappers
-- fragile selectors like absolute XPath
-
-### Scoring model
-
-Accepted candidates are ranked using a weighted heuristic that favors:
-
-- strong semantic attributes
-- uniqueness
-- stability
-- readability
-
-In practice this means selectors based on `data-testid`, stable `id`, clear labels, and readable text beat layout-oriented selectors or generic container paths.
-
-### Returned result
-
-The builder returns:
-
-- the best locator type and locator value
-- the winning strategy
-- the final score
-- the top fallback locator candidates
-- detailed generation and rejection logs
-
-This is what the visual healer now records in the report instead of relying on the old raw CSS path generator.
+The `models` folder is intentionally ignored by git so local model artifacts are never pushed by mistake.
 
 ## Human In The Loop
 
-With `-Dinteractive=true`, the visual engine opens a confirmation dialog for each heal. The dialog shows:
+With `-Dinteractive=true`, each visual heal opens a confirmation dialog that shows:
 
 - the failed locator
-- candidate rank and score
+- candidate score
 - the generated smart locator
-- a full-page heatmap overlay
+- the full-page heatmap
 
-The dialog requires explicit confirmation and supports:
+Available actions:
 
 - `Confirm`
 - `Try Next Best`
 - `Refuse (Abort)`
 
-## Full-Page Heatmaps
+The dialog now requires explicit confirmation and no longer auto-accepts by default.
 
-Heatmaps are generated against stitched full-page screenshots. Candidate boxes are stored in page coordinates, so overlays stay aligned even for elements near the bottom of long pages after scrolling.
+## Heatmaps
 
-## Flags
+Heatmaps are built from stitched full-page screenshots.
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-DtestUrl` | demo page | Target page URL (`file:///` or `http(s)://`) |
-| `-Dinteractive` | `false` | Pause for human confirmation on each heal |
-| `-Dreport` | `true` | Generate `visual-healing-report.html` |
-| `-Dvisual.captureBaseline` | auto | Explicitly enable or disable baseline capture |
-| `-Dvisual.captureBaseline.refresh` | `false` | Replace existing baseline entries during capture |
+Important implementation detail:
+
+- candidate boxes are stored in page coordinates, not viewport coordinates
+
+That keeps lower-page overlays aligned after scrolling and fixed the earlier drift that appeared once screenshots became taller.
 
 ## Output Files
 
-- `visual-baseline.json` - stored baseline snapshots
-- `visual-heatmap-*.png` - per-heal heatmap overlays
-- `visual-healing-report.html` - HTML report of healed locators and scores
+- `visual-baseline.json`
+- `visual-heatmap-*.png`
+- `visual-healing-report.html`
 
-## Main Classes
+These artifacts are kept out of git and regenerated locally.
 
-- `com.visual.VisualDriver` - wraps Selenium and routes failures into visual healing
-- `com.visual.VisualHealingEngine` - scoring, heatmaps, reports, and interactive confirmation
-- `com.visual.SmartLocatorBuilder` - converts a candidate element or point into a robust Selenium locator
-- `com.visual.BaselineStore` - persists and loads visual baselines
-- `com.demo.VisualDemoTests` - demo test flow against the baseline and updated pages
+## Key Tests
+
+- `com.demo.VisualDemoTests`
+  - baseline and updated demo flow
+- `com.demo.VisualPageMatrixTests`
+  - baseline vs multiple updated pages
+- `com.demo.HybridRecoveryModeTests`
+  - direct vs Healenium vs visual-healing coverage on one page pair
+- `com.visual.SmartLocatorBuilderTest`
+  - locator generation and selector quality checks
+- `com.visual.SemanticSimilarityTest`
+  - semantic and lexical scoring checks
+- `com.visual.EmbeddingFingerprintBuilderTest`
+  - fingerprint construction checks
+- `com.visual.LocalEmbeddingServiceTest`
+  - local embedding service checks
+
+## Key Classes
+
+- `com.visual.VisualDriver`
+  - wrapper that routes Selenium failures into the visual engine
+- `com.visual.VisualHealingEngine`
+  - scoring, candidate ranking, heatmaps, interactive confirmation, and report generation
+- `com.visual.SmartLocatorBuilder`
+  - semantic locator generation from points or elements
+- `com.visual.SemanticSignalExtractor`
+  - shared semantic extraction orchestrator
+- `com.visual.LocalEmbeddingService`
+  - optional ONNX embedding runtime
+- `com.visual.BaselineStore`
+  - page-scoped baseline persistence
+
+## More Documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/TEST_MATRIX.md`](docs/TEST_MATRIX.md)

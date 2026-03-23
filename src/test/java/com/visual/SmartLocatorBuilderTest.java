@@ -122,6 +122,31 @@ public class SmartLocatorBuilderTest {
         assertUnique(result, driver);
     }
 
+    @Test
+    void extractsAccessibleNameRoleAndAutocompleteSignals() {
+        driver.get(pageUrl("semantic_signals.html"));
+        int[] point = pointForCss("input[type='email']");
+        SmartLocatorResult result = builder.buildLocatorFromPoint(point[0], point[1]);
+
+        assertEquals("Primary Email", result.getAccessibleName());
+        assertEquals("textbox", result.getSemanticRole());
+        assertEquals("email", result.getAutocomplete());
+        assertEquals("autocomplete", result.getStrategy());
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void extractsTextboxRoleForContentEditableAriaLabelledElement() {
+        driver.get(pageUrl("semantic_signals.html"));
+        int[] point = pointForCss("div[contenteditable='true']");
+        SmartLocatorResult result = builder.buildLocatorFromPoint(point[0], point[1]);
+
+        assertEquals("Short Bio", result.getAccessibleName());
+        assertEquals("textbox", result.getSemanticRole());
+        assertTrue(List.of("label-based", "contenteditable-placeholder", "class-attribute").contains(result.getStrategy()));
+        assertUnique(result, driver);
+    }
+
     private static void assertStable(SmartLocatorResult result) {
         assertFalse(result.getLocator().contains("nth-of-type"));
         assertFalse(result.getLocator().startsWith("/html"));

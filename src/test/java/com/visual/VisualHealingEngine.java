@@ -9,22 +9,27 @@ import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class VisualHealingEngine {
-    private static final double W_VIS=0.18, W_POS=0.18, W_TXT=0.14, W_KIND=0.20, W_SEQ=0.30;
+    private static final double W_VIS=0.09, W_POS=0.07, W_TXT=0.06, W_KIND=0.10, W_SEQ=0.04,
+        W_ROLE=0.14, W_AUTO=0.08, W_SEM=0.20, W_FIELD=0.22, W_EMB=0.12;
     private static final double THR=0.56, MAX_D=600.0;
     private final BaselineStore store;
+    private final SemanticSignalExtractor semanticExtractor;
+    private final LocalEmbeddingService embeddingService;
     private int healCount = 0;
     private boolean interactiveMode = false;
 
     public static final List<ReportEntry> REPORTS = new ArrayList<>();
 
-    public VisualHealingEngine(){store=new BaselineStore();}
-    public VisualHealingEngine(BaselineStore s){store=s;}
+    public VisualHealingEngine(){this(new BaselineStore());}
+    public VisualHealingEngine(BaselineStore s){store=s; semanticExtractor = new SemanticSignalExtractor(); embeddingService = LocalEmbeddingService.getInstance();}
 
     public void setInteractiveMode(boolean b){ this.interactiveMode = b; }
 
@@ -42,10 +47,28 @@ public class VisualHealingEngine {
             String txt=sv(meta,"text");
             String kind=sv(meta,"kind");
             String tagName=sv(meta,"tag");
+            SemanticSignals signals = semanticExtractor.extract(d, el);
+            String accessibleName=firstNonBlank(signals.getAccessibleName(), sv(meta,"accessibleName"));
+            String semanticRole=firstNonBlank(signals.getSemanticRole(), sv(meta,"semanticRole"));
+            String autocomplete=firstNonBlank(signals.getAutocomplete(), sv(meta,"autocomplete"));
+            String labelText=signals.getLabelText();
+            String placeholder=signals.getPlaceholder();
+            String descriptionText=signals.getDescriptionText();
+            String sectionContext=signals.getSectionContext();
+            String parentContext=signals.getParentContext();
+            String inputType=signals.getInputType();
+            ElementSnapshot snapshot = new ElementSnapshot(loc.toString(),b64,x,y,w,h,txt,pageUrl,kind,tagName,
+                accessibleName, semanticRole, autocomplete)
+                .withSemanticContext(labelText, placeholder, descriptionText, sectionContext, parentContext, inputType);
+            String fingerprint = EmbeddingFingerprintBuilder.forSnapshot(loc.toString(), snapshot);
+            float[] embeddingVector = embeddingService.embed(fingerprint);
+            snapshot.withEmbedding(fingerprint, embeddingService.getModelName(), embeddingVector);
             boolean replaceExisting = Boolean.parseBoolean(System.getProperty("visual.captureBaseline.refresh", "false"));
-            boolean saved = store.save(new ElementSnapshot(loc.toString(),b64,x,y,w,h,txt,pageUrl,kind,tagName), replaceExisting);
+            boolean saved = store.save(snapshot, replaceExisting);
             if(saved){
-                System.out.println("[VISUAL-CAPTURE] "+loc+" page="+pageUrl+" kind="+kind+" box=["+x+","+y+","+w+"x"+h+"] text='"+txt+"'");
+                System.out.println("[VISUAL-CAPTURE] "+loc+" page="+pageUrl+" kind="+kind+" role="+semanticRole+" autocomplete="+autocomplete
+                    +" emb="+(embeddingVector == null ? "off" : embeddingService.getModelName())
+                    +" box=["+x+","+y+","+w+"x"+h+"] text='"+txt+"' accessible='"+accessibleName+"'");
             } else {
                 System.out.println("[VISUAL-CAPTURE] Skipped existing baseline for "+loc+" page="+pageUrl);
             }
@@ -59,6 +82,11 @@ public class VisualHealingEngine {
         try{
             BufferedImage pageImg=ImageUtils.screenshotPage(d);
             BufferedImage tmpl=ImageUtils.fromBase64(base.screenshotBase64);
+            float[] baseEmbedding = embeddingService.embeddingForSnapshot(key, base);
+            boolean embeddingsActive = baseEmbedding != null && embeddingService.isEnabled();
+            String baseFieldIdentity = EmbeddingFingerprintBuilder.buildFieldIdentity(
+                base.accessibleName, base.labelText, base.placeholder, base.autocomplete, base.inputType, base.text, key);
+            float[] baseFieldEmbedding = embeddingsActive ? embeddingService.embed(baseFieldIdentity) : null;
 
             List<Map<String,Object>> rawCands=storeCandidatesAndGetMeta(d);
             List<CandidateMeta> candidateMeta = new ArrayList<>();
@@ -66,13 +94,41 @@ public class VisualHealingEngine {
                 Map<String,Object> c=rawCands.get(idx);
                 int cx=iv(c,"x"),cy=iv(c,"y"),cw=iv(c,"w"),ch=iv(c,"h");
                 if(cw<=0||ch<=0)continue;
-                candidateMeta.add(new CandidateMeta(idx, cx, cy, cw, ch, sv(c,"text"), sv(c,"selector"), sv(c,"kind")));
+                WebElement candidateElement = resolveCandidateElement(d, idx);
+                SemanticSignals signals = candidateElement == null
+                    ? SemanticSignals.empty("unavailable")
+                    : semanticExtractor.extract(d, candidateElement);
+                String kind = sv(c,"kind");
+                String tagName = sv(c,"tag");
+                String accessibleName = firstNonBlank(signals.getAccessibleName(), sv(c,"accessibleName"));
+                String semanticRole = firstNonBlank(signals.getSemanticRole(), sv(c,"semanticRole"));
+                String autocomplete = firstNonBlank(signals.getAutocomplete(), sv(c,"autocomplete"));
+                String labelText = signals.getLabelText();
+                String placeholder = signals.getPlaceholder();
+                String descriptionText = signals.getDescriptionText();
+                String sectionContext = signals.getSectionContext();
+                String parentContext = signals.getParentContext();
+                String inputType = signals.getInputType();
+                String text = sv(c,"text");
+                String fingerprint = EmbeddingFingerprintBuilder.build(key, kind, tagName, accessibleName, semanticRole, autocomplete,
+                    labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, text);
+                String fieldIdentity = EmbeddingFingerprintBuilder.buildFieldIdentity(
+                    accessibleName, labelText, placeholder, autocomplete, inputType, text);
+                float[] embeddingVector = embeddingsActive ? embeddingService.embed(fingerprint) : null;
+                float[] fieldEmbeddingVector = embeddingsActive ? embeddingService.embed(fieldIdentity) : null;
+                candidateMeta.add(new CandidateMeta(idx, cx, cy, cw, ch, text, sv(c,"selector"), kind, tagName,
+                    accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText,
+                    sectionContext, parentContext, inputType, fingerprint, fieldIdentity, embeddingVector, fieldEmbeddingVector));
             }
 
             String baseKind = resolveBaseKind(base, key);
+            List<ElementSnapshot> sameKindBaselines = baselineSnapshots(base, baseKind);
             int baseSequence = baselineSequence(base, key, baseKind);
-            int baseKindCount = baselineKindCount(base, baseKind);
+            int baseKindCount = sameKindBaselines.size();
             assignSequencePositions(candidateMeta);
+            FieldCompetitionContext fieldCompetition = buildFieldCompetitionContext(
+                base, baseFieldIdentity, baseFieldEmbedding, sameKindBaselines, candidateMeta, baseKind
+            );
             SmartLocatorBuilder locatorBuilder = new SmartLocatorBuilder(d);
 
             List<CandidateWrapper> sortedCands = new ArrayList<>();
@@ -81,10 +137,17 @@ public class VisualHealingEngine {
             for(CandidateMeta c : candidateMeta){
                 double vis=ImageUtils.templateMatch(ImageUtils.crop(pageImg,c.x,c.y,c.w,c.h),tmpl);
                 double pos=ImageUtils.positionScore(base.x,base.y,base.w,base.h,c.x,c.y,c.w,c.h,MAX_D);
-                double txt=SemanticSimilarity.score(base.text, c.text);
+                double txt=SemanticSimilarity.simpleScore(base.text, c.text);
                 double kind=kindScore(baseKind, c.kind);
                 double seq=sequenceScore(baseSequence, baseKindCount, c.sequence, c.kindCount, baseKind, c.kind);
-                double score=W_VIS*vis+W_POS*pos+W_TXT*txt+W_KIND*kind+W_SEQ*seq;
+                double role=semanticRoleScore(base.semanticRole, c.semanticRole, baseKind, c.kind);
+                double autocomplete=autocompleteScore(base.autocomplete, c.autocomplete);
+                double semantic=semanticTextScore(base, c);
+                double fieldSemantic=fieldSemanticScore(c, fieldCompetition);
+                double embedding = embeddingsActive ? embeddingScore(baseEmbedding, c.embeddingVector, baseKind, c.kind) : 0.0;
+                double embeddingWeight = embeddingsActive ? W_EMB : 0.0;
+                double score=W_VIS*vis+W_POS*pos+W_TXT*txt+W_KIND*kind+W_SEQ*seq
+                    +W_ROLE*role+W_AUTO*autocomplete+W_SEM*semantic+W_FIELD*fieldSemantic+embeddingWeight*embedding;
                 SmartLocatorResult smartLocator = buildSmartLocator(d, locatorBuilder, c);
                 String selector = smartLocator != null
                     ? smartLocator.getLocatorType() + ": " + smartLocator.getLocator()
@@ -92,10 +155,12 @@ public class VisualHealingEngine {
                 String selectorStrategy = smartLocator != null ? smartLocator.getStrategy() : "visual-raw";
 
                 heatCands.add(new HeatmapRenderer.Candidate(c.x,c.y,c.w,c.h,score,c.text + " [" + c.kind + " #" + c.sequence + "]"));
-                sortedCands.add(new CandidateWrapper(score, c.originalIndex, selector, selectorStrategy, c.kind, c.sequence, vis, pos, txt, kind, seq, c.x + c.w/2, c.y + c.h/2));
+                sortedCands.add(new CandidateWrapper(score, c.originalIndex, selector, selectorStrategy, c.kind, c.sequence,
+                    vis, pos, txt, kind, seq, role, autocomplete, semantic, fieldSemantic, embedding, c.x + c.w/2, c.y + c.h/2));
             }
 
             sortedCands.sort(Comparator.comparingDouble((CandidateWrapper cw) -> cw.score).reversed());
+            logTopCandidates(key, candidateMeta, sortedCands);
 
             if (sortedCands.isEmpty() || sortedCands.get(0).score < THR) {
                 return abortAndReport(key, sortedCands.isEmpty() ? 0.0 : sortedCands.get(0).score, candidateMeta.size(), pageImg, heatCands, -1);
@@ -132,8 +197,9 @@ public class VisualHealingEngine {
                 "<b>Sequence:</b> #%d<br>" +
                 "<b>Locator Strategy:</b> %s<br>" +
                 "<b>New Locator:</b> <code>%s</code><br>" +
-                "<b>Score:</b> %.3f &nbsp;(visual=%.2f &nbsp;position=%.2f &nbsp;text=%.2f &nbsp;kind=%.2f &nbsp;seq=%.2f)</html>",
-                key, i+1, sorted.size(), cand.kind, cand.sequence, cand.strategy, cand.selector, cand.score, cand.vis, cand.pos, cand.txt, cand.kindScore, cand.seqScore);
+                "<b>Score:</b> %.3f &nbsp;(visual=%.2f &nbsp;position=%.2f &nbsp;text=%.2f &nbsp;kind=%.2f &nbsp;seq=%.2f &nbsp;role=%.2f &nbsp;auto=%.2f &nbsp;sem=%.2f &nbsp;field=%.2f &nbsp;emb=%.2f)</html>",
+                key, i+1, sorted.size(), cand.kind, cand.sequence, cand.strategy, cand.selector, cand.score, cand.vis, cand.pos,
+                cand.txt, cand.kindScore, cand.seqScore, cand.roleScore, cand.autocompleteScore, cand.semanticScore, cand.fieldSemanticScore, cand.embeddingScore);
             JLabel infoLabel = new JLabel(info);
             infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
             panel.add(infoLabel, BorderLayout.NORTH);
@@ -204,24 +270,522 @@ public class VisualHealingEngine {
     private static class CandidateMeta {
         final int originalIndex;
         final int x, y, w, h;
-        final String text, selector, kind;
+        final String text, selector, kind, tagName, accessibleName, semanticRole, autocomplete,
+            labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, fingerprint, fieldIdentity;
+        final float[] embeddingVector, fieldEmbeddingVector;
         int sequence = 1;
         int kindCount = 1;
-        CandidateMeta(int originalIndex, int x, int y, int w, int h, String text, String selector, String kind) {
+        CandidateMeta(int originalIndex, int x, int y, int w, int h, String text, String selector, String kind, String tagName,
+                      String accessibleName, String semanticRole, String autocomplete, String labelText, String placeholder,
+                      String descriptionText, String sectionContext, String parentContext, String inputType,
+                      String fingerprint, String fieldIdentity, float[] embeddingVector, float[] fieldEmbeddingVector) {
             this.originalIndex = originalIndex;
             this.x = x; this.y = y; this.w = w; this.h = h;
             this.text = text; this.selector = selector; this.kind = kind;
+            this.tagName = tagName;
+            this.accessibleName = accessibleName; this.semanticRole = semanticRole; this.autocomplete = autocomplete;
+            this.labelText = labelText; this.placeholder = placeholder; this.descriptionText = descriptionText;
+            this.sectionContext = sectionContext; this.parentContext = parentContext; this.inputType = inputType;
+            this.fingerprint = fingerprint; this.fieldIdentity = fieldIdentity;
+            this.embeddingVector = embeddingVector; this.fieldEmbeddingVector = fieldEmbeddingVector;
         }
     }
 
     private static class CandidateWrapper {
-        final double score, vis, pos, txt, kindScore, seqScore;
+        final double score, vis, pos, txt, kindScore, seqScore, roleScore, autocompleteScore, semanticScore, fieldSemanticScore, embeddingScore;
         final int originalIndex, sequence, cx, cy;
         final String selector, strategy, kind;
         CandidateWrapper(double score, int originalIndex, String selector, String strategy, String kind, int sequence,
-                         double vis, double pos, double txt, double kindScore, double seqScore, int cx, int cy) {
+                         double vis, double pos, double txt, double kindScore, double seqScore,
+                         double roleScore, double autocompleteScore, double semanticScore, double fieldSemanticScore, double embeddingScore, int cx, int cy) {
             this.score = score; this.originalIndex = originalIndex; this.selector = selector; this.strategy = strategy; this.kind = kind; this.sequence = sequence;
-            this.vis = vis; this.pos = pos; this.txt = txt; this.kindScore = kindScore; this.seqScore = seqScore; this.cx = cx; this.cy = cy;
+            this.vis = vis; this.pos = pos; this.txt = txt; this.kindScore = kindScore; this.seqScore = seqScore;
+            this.roleScore = roleScore; this.autocompleteScore = autocompleteScore; this.semanticScore = semanticScore; this.fieldSemanticScore = fieldSemanticScore; this.embeddingScore = embeddingScore;
+            this.cx = cx; this.cy = cy;
+        }
+    }
+
+    private static class BaselineFieldProfile {
+        final ElementSnapshot snapshot;
+        final String fieldIdentity;
+        final float[] fieldEmbedding;
+
+        BaselineFieldProfile(ElementSnapshot snapshot, String fieldIdentity, float[] fieldEmbedding) {
+            this.snapshot = snapshot;
+            this.fieldIdentity = fieldIdentity;
+            this.fieldEmbedding = fieldEmbedding;
+        }
+    }
+
+    private static class FieldCompetitionContext {
+        final int currentBaselineIndex;
+        final List<BaselineFieldProfile> baselines;
+        final List<CandidateMeta> candidates;
+        final double[][] pairScores;
+        final int[] assignedCandidateByBaseline;
+        final int[] assignedBaselineByCandidate;
+        final double[] bestCandidateScoreByBaseline;
+        final double[] bestBaselineScoreByCandidate;
+
+        FieldCompetitionContext(int currentBaselineIndex, List<BaselineFieldProfile> baselines, List<CandidateMeta> candidates,
+                                double[][] pairScores, int[] assignedCandidateByBaseline, int[] assignedBaselineByCandidate,
+                                double[] bestCandidateScoreByBaseline, double[] bestBaselineScoreByCandidate) {
+            this.currentBaselineIndex = currentBaselineIndex;
+            this.baselines = baselines;
+            this.candidates = candidates;
+            this.pairScores = pairScores;
+            this.assignedCandidateByBaseline = assignedCandidateByBaseline;
+            this.assignedBaselineByCandidate = assignedBaselineByCandidate;
+            this.bestCandidateScoreByBaseline = bestCandidateScoreByBaseline;
+            this.bestBaselineScoreByCandidate = bestBaselineScoreByCandidate;
+        }
+
+        int findCandidateIndex(int originalIndex) {
+            for (int i = 0; i < candidates.size(); i++) {
+                if (candidates.get(i).originalIndex == originalIndex) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+    }
+
+    private static double semanticRoleScore(String baseRole, String candidateRole, String baseKind, String candidateKind) {
+        String normalizedBase = normalizeRole(baseRole, baseKind);
+        String normalizedCandidate = normalizeRole(candidateRole, candidateKind);
+        if (normalizedBase.isBlank() && normalizedCandidate.isBlank()) return 0.50;
+        if (normalizedBase.equals(normalizedCandidate)) return 1.0;
+        if ((normalizedBase.equals("textbox") && normalizedCandidate.equals("combobox")) ||
+            (normalizedBase.equals("combobox") && normalizedCandidate.equals("textbox"))) return 0.35;
+        if (Objects.equals(baseKind, candidateKind)) return 0.55;
+        return 0.10;
+    }
+
+    private static double autocompleteScore(String baseAutocomplete, String candidateAutocomplete) {
+        String baseToken = normalizeAutocomplete(baseAutocomplete);
+        String candidateToken = normalizeAutocomplete(candidateAutocomplete);
+        if (baseToken.isBlank() && candidateToken.isBlank()) return 0.50;
+        if (baseToken.isBlank() || candidateToken.isBlank()) return 0.35;
+        return baseToken.equals(candidateToken) ? 1.0 : 0.0;
+    }
+
+    private static double semanticTextScore(ElementSnapshot base, CandidateMeta candidate) {
+        String baseAccessible = nv(base.accessibleName);
+        String candidateAccessible = nv(candidate.accessibleName);
+        double accessible = scoreIfPresent(baseAccessible, candidateAccessible);
+        double label = Math.max(scoreIfPresent(base.labelText, candidate.labelText),
+            Math.max(scoreIfPresent(baseAccessible, candidate.labelText), scoreIfPresent(base.labelText, candidateAccessible)));
+        double crossAccessible = Math.max(
+            scoreIfPresent(baseAccessible, candidate.text),
+            scoreIfPresent(base.text, candidateAccessible)
+        );
+        double placeholder = Math.max(
+            scoreIfPresent(base.placeholder, candidate.placeholder),
+            Math.max(scoreIfPresent(base.placeholder, candidateAccessible), scoreIfPresent(baseAccessible, candidate.placeholder))
+        );
+        double context = Math.max(
+            scoreIfPresent(base.sectionContext, candidate.sectionContext),
+            scoreIfPresent(base.parentContext, candidate.parentContext)
+        );
+        double text = scoreIfPresent(base.text, candidate.text);
+        if (!baseAccessible.isBlank() && !candidateAccessible.isBlank()) {
+            return (0.38 * Math.max(accessible, label)) + (0.18 * placeholder) + (0.14 * context)
+                + (0.15 * crossAccessible) + (0.15 * text);
+        }
+        return Math.max(Math.max(accessible, label),
+            Math.max(placeholder, Math.max(crossAccessible, Math.max(context, text))));
+    }
+
+    private static double embeddingScore(float[] baselineVector, float[] candidateVector, String baseKind, String candidateKind) {
+        if (!Objects.equals(baseKind, candidateKind)
+            && !((Objects.equals(baseKind, "text") && Objects.equals(candidateKind, "select"))
+            || (Objects.equals(baseKind, "select") && Objects.equals(candidateKind, "text")))) {
+            return 0.0;
+        }
+        return LocalEmbeddingService.cosine(baselineVector, candidateVector);
+    }
+
+    private FieldCompetitionContext buildFieldCompetitionContext(ElementSnapshot base, String baseFieldIdentity, float[] baseFieldEmbedding,
+                                                                List<ElementSnapshot> sameKindBaselines, List<CandidateMeta> allCandidates,
+                                                                String baseKind) {
+        List<BaselineFieldProfile> baselineProfiles = new ArrayList<>();
+        int currentBaselineIndex = -1;
+        for (ElementSnapshot snapshot : sameKindBaselines) {
+            if (snapshot == null) {
+                continue;
+            }
+            boolean isCurrent = sameSnapshot(snapshot, base) || Objects.equals(nv(snapshot.locator), nv(base.locator));
+            String fieldIdentity = isCurrent
+                ? baseFieldIdentity
+                : EmbeddingFingerprintBuilder.buildFieldIdentity(
+                    snapshot.accessibleName, snapshot.labelText, snapshot.placeholder, snapshot.autocomplete,
+                    snapshot.inputType, snapshot.text, snapshot.locator);
+            float[] fieldEmbedding = isCurrent
+                ? baseFieldEmbedding
+                : (embeddingService.isEnabled() ? embeddingService.embed(fieldIdentity) : null);
+            baselineProfiles.add(new BaselineFieldProfile(snapshot, fieldIdentity, fieldEmbedding));
+            if (isCurrent) {
+                currentBaselineIndex = baselineProfiles.size() - 1;
+            }
+        }
+
+        List<CandidateMeta> compatibleCandidates = allCandidates.stream()
+            .filter(candidate -> compatibleFieldKind(baseKind, candidate.kind))
+            .toList();
+        if (baselineProfiles.isEmpty() || compatibleCandidates.isEmpty()) {
+            return new FieldCompetitionContext(currentBaselineIndex, baselineProfiles, compatibleCandidates, new double[0][0], new int[0], new int[0], new double[0], new double[0]);
+        }
+
+        double[][] pairScores = new double[baselineProfiles.size()][compatibleCandidates.size()];
+        double[][] assignmentScores = new double[baselineProfiles.size()][compatibleCandidates.size()];
+        double[] bestCandidateScoreByBaseline = new double[baselineProfiles.size()];
+        double[] bestBaselineScoreByCandidate = new double[compatibleCandidates.size()];
+        for (int i = 0; i < baselineProfiles.size(); i++) {
+            BaselineFieldProfile profile = baselineProfiles.get(i);
+            String profileKind = resolveBaseKind(profile.snapshot, profile.snapshot.locator);
+            int baselineSequence = i + 1;
+            for (int j = 0; j < compatibleCandidates.size(); j++) {
+                CandidateMeta candidate = compatibleCandidates.get(j);
+                double pairScore = fieldPairScore(profile.snapshot, candidate, profile.fieldIdentity, profile.fieldEmbedding);
+                double sequenceTieBreaker = 0.15 * sequenceScore(
+                    baselineSequence, baselineProfiles.size(), candidate.sequence, candidate.kindCount, profileKind, candidate.kind
+                );
+                double neighborhoodTieBreaker = 0.12 * neighborhoodScore(i, candidate, baselineProfiles, compatibleCandidates);
+                pairScores[i][j] = pairScore;
+                assignmentScores[i][j] = pairScore + sequenceTieBreaker + neighborhoodTieBreaker;
+                bestCandidateScoreByBaseline[i] = Math.max(bestCandidateScoreByBaseline[i], pairScore);
+                bestBaselineScoreByCandidate[j] = Math.max(bestBaselineScoreByCandidate[j], pairScore);
+            }
+        }
+
+        int[] assignedCandidateByBaseline = assignFieldCandidates(assignmentScores);
+        int[] assignedBaselineByCandidate = new int[compatibleCandidates.size()];
+        Arrays.fill(assignedBaselineByCandidate, -1);
+        for (int i = 0; i < assignedCandidateByBaseline.length; i++) {
+            int candidateIndex = assignedCandidateByBaseline[i];
+            if (candidateIndex >= 0 && candidateIndex < assignedBaselineByCandidate.length) {
+                assignedBaselineByCandidate[candidateIndex] = i;
+            }
+        }
+        return new FieldCompetitionContext(currentBaselineIndex, baselineProfiles, compatibleCandidates, pairScores,
+            assignedCandidateByBaseline, assignedBaselineByCandidate, bestCandidateScoreByBaseline, bestBaselineScoreByCandidate);
+    }
+
+    private static boolean compatibleFieldKind(String baseKind, String candidateKind) {
+        if (Objects.equals(baseKind, candidateKind)) {
+            return true;
+        }
+        return (Objects.equals(baseKind, "text") && Objects.equals(candidateKind, "select"))
+            || (Objects.equals(baseKind, "select") && Objects.equals(candidateKind, "text"));
+    }
+
+    private static int[] assignFieldCandidates(double[][] pairScores) {
+        int baselineCount = pairScores.length;
+        if (baselineCount == 0) {
+            return new int[0];
+        }
+        int candidateCount = pairScores[0].length;
+        int[] assignments = new int[baselineCount];
+        Arrays.fill(assignments, -1);
+        if (candidateCount == 0) {
+            return assignments;
+        }
+        if (candidateCount <= 18) {
+            return optimalFieldAssignment(pairScores);
+        }
+        return greedyFieldAssignment(pairScores);
+    }
+
+    private static int[] optimalFieldAssignment(double[][] pairScores) {
+        Map<String, Double> memo = new HashMap<>();
+        Map<String, Integer> choice = new HashMap<>();
+        solveFieldAssignment(0, 0L, pairScores, memo, choice);
+        int[] assignments = new int[pairScores.length];
+        Arrays.fill(assignments, -1);
+        long usedMask = 0L;
+        for (int baselineIndex = 0; baselineIndex < assignments.length; baselineIndex++) {
+            String key = baselineIndex + ":" + usedMask;
+            int chosenCandidate = choice.getOrDefault(key, -1);
+            if (chosenCandidate >= 0) {
+                assignments[baselineIndex] = chosenCandidate;
+                usedMask |= (1L << chosenCandidate);
+            }
+        }
+        return assignments;
+    }
+
+    private static double solveFieldAssignment(int baselineIndex, long usedMask, double[][] pairScores,
+                                               Map<String, Double> memo, Map<String, Integer> choice) {
+        if (baselineIndex >= pairScores.length) {
+            return 0.0;
+        }
+        String key = baselineIndex + ":" + usedMask;
+        Double cached = memo.get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        double bestScore = solveFieldAssignment(baselineIndex + 1, usedMask, pairScores, memo, choice);
+        int bestChoice = -1;
+        for (int candidateIndex = 0; candidateIndex < pairScores[baselineIndex].length; candidateIndex++) {
+            if ((usedMask & (1L << candidateIndex)) != 0L) {
+                continue;
+            }
+            double pairScore = pairScores[baselineIndex][candidateIndex];
+            if (pairScore <= 0.0) {
+                continue;
+            }
+            double totalScore = pairScore + solveFieldAssignment(baselineIndex + 1, usedMask | (1L << candidateIndex), pairScores, memo, choice);
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                bestChoice = candidateIndex;
+            }
+        }
+        memo.put(key, bestScore);
+        choice.put(key, bestChoice);
+        return bestScore;
+    }
+
+    private static int[] greedyFieldAssignment(double[][] pairScores) {
+        int baselineCount = pairScores.length;
+        int candidateCount = pairScores[0].length;
+        int[] assignments = new int[baselineCount];
+        Arrays.fill(assignments, -1);
+        boolean[] usedCandidates = new boolean[candidateCount];
+        List<int[]> rankedPairs = new ArrayList<>();
+        for (int i = 0; i < baselineCount; i++) {
+            for (int j = 0; j < candidateCount; j++) {
+                if (pairScores[i][j] > 0.0) {
+                    rankedPairs.add(new int[]{i, j});
+                }
+            }
+        }
+        rankedPairs.sort((left, right) -> Double.compare(pairScores[right[0]][right[1]], pairScores[left[0]][left[1]]));
+        for (int[] pair : rankedPairs) {
+            int baselineIndex = pair[0];
+            int candidateIndex = pair[1];
+            if (assignments[baselineIndex] >= 0 || usedCandidates[candidateIndex]) {
+                continue;
+            }
+            assignments[baselineIndex] = candidateIndex;
+            usedCandidates[candidateIndex] = true;
+        }
+        return assignments;
+    }
+
+    private static double fieldSemanticScore(CandidateMeta candidate, FieldCompetitionContext context) {
+        if (context == null) {
+            return 0.0;
+        }
+        int baselineIndex = context.currentBaselineIndex;
+        int candidateIndex = context.findCandidateIndex(candidate.originalIndex);
+        if (baselineIndex < 0 || candidateIndex < 0 || baselineIndex >= context.pairScores.length) {
+            return 0.0;
+        }
+        double currentMatch = context.pairScores[baselineIndex][candidateIndex];
+        if (context.baselines.size() <= 1) {
+            return currentMatch;
+        }
+        double baselineBest = context.bestCandidateScoreByBaseline[baselineIndex];
+        double candidateBest = context.bestBaselineScoreByCandidate[candidateIndex];
+        double baselineAffinity = normalizeAgainstBest(currentMatch, baselineBest);
+        double candidateAffinity = normalizeAgainstBest(currentMatch, candidateBest);
+        double mutualAffinity = Math.sqrt(baselineAffinity * candidateAffinity);
+        double assignmentAffinity = assignmentAffinity(baselineIndex, candidateIndex, context);
+        double anchoredAssignment = assignmentAffinity * currentMatch;
+        return (0.50 * currentMatch) + (0.20 * mutualAffinity) + (0.30 * anchoredAssignment);
+    }
+
+    private static double normalizeAgainstBest(double current, double best) {
+        if (best <= 0.0) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(1.0, current / best));
+    }
+
+    private static double assignmentAffinity(int baselineIndex, int candidateIndex, FieldCompetitionContext context) {
+        int assignedCandidate = baselineIndex >= 0 && baselineIndex < context.assignedCandidateByBaseline.length
+            ? context.assignedCandidateByBaseline[baselineIndex]
+            : -1;
+        if (assignedCandidate == candidateIndex) {
+            return 1.0;
+        }
+        int ownerBaseline = candidateIndex >= 0 && candidateIndex < context.assignedBaselineByCandidate.length
+            ? context.assignedBaselineByCandidate[candidateIndex]
+            : -1;
+        if (ownerBaseline >= 0 && ownerBaseline != baselineIndex) {
+            return 0.0;
+        }
+        return 0.18;
+    }
+
+    private static double neighborhoodScore(int baselineIndex, CandidateMeta candidate,
+                                            List<BaselineFieldProfile> baselines, List<CandidateMeta> candidates) {
+        double sum = 0.0;
+        int count = 0;
+
+        CandidateMeta previousCandidate = neighborCandidate(candidates, candidate, -1);
+        if (baselineIndex > 0 && previousCandidate != null) {
+            BaselineFieldProfile previousBaseline = baselines.get(baselineIndex - 1);
+            sum += fieldPairScore(previousBaseline.snapshot, previousCandidate, previousBaseline.fieldIdentity, previousBaseline.fieldEmbedding);
+            count++;
+        }
+
+        CandidateMeta nextCandidate = neighborCandidate(candidates, candidate, 1);
+        if (baselineIndex + 1 < baselines.size() && nextCandidate != null) {
+            BaselineFieldProfile nextBaseline = baselines.get(baselineIndex + 1);
+            sum += fieldPairScore(nextBaseline.snapshot, nextCandidate, nextBaseline.fieldIdentity, nextBaseline.fieldEmbedding);
+            count++;
+        }
+
+        if (count == 0) {
+            return 0.50;
+        }
+        return sum / count;
+    }
+
+    private static CandidateMeta neighborCandidate(List<CandidateMeta> candidates, CandidateMeta current, int direction) {
+        CandidateMeta best = null;
+        int bestDistance = Integer.MAX_VALUE;
+        for (CandidateMeta candidate : candidates) {
+            if (candidate.originalIndex == current.originalIndex) {
+                continue;
+            }
+            int delta = candidate.sequence - current.sequence;
+            if (direction < 0 && delta >= 0) {
+                continue;
+            }
+            if (direction > 0 && delta <= 0) {
+                continue;
+            }
+            int distance = Math.abs(delta);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static boolean sameSnapshot(ElementSnapshot left, ElementSnapshot right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return Objects.equals(nv(left.locator), nv(right.locator))
+            && Objects.equals(nv(left.pageUrl), nv(right.pageUrl))
+            && left.x == right.x && left.y == right.y && left.w == right.w && left.h == right.h;
+    }
+
+    private static double fieldPairScore(ElementSnapshot base, CandidateMeta candidate,
+                                         String baseFieldIdentity, float[] baseFieldEmbedding) {
+        String baseKind = resolveBaseKind(base, base.locator);
+        double identityText = scoreIfPresent(baseFieldIdentity, candidate.fieldIdentity);
+        double directName = Math.max(
+            scoreIfPresent(base.accessibleName, candidate.accessibleName),
+            Math.max(scoreIfPresent(base.labelText, candidate.labelText), scoreIfPresent(base.accessibleName, candidate.labelText))
+        );
+        double placeholder = Math.max(
+            scoreIfPresent(base.placeholder, candidate.placeholder),
+            Math.max(scoreIfPresent(base.placeholder, candidate.accessibleName), scoreIfPresent(base.accessibleName, candidate.placeholder))
+        );
+        double autocomplete = strictAutocompleteScore(base.autocomplete, candidate.autocomplete);
+        double inputType = scoreIfPresent(base.inputType, candidate.inputType);
+        double control = fieldControlScore(baseKind, candidate.kind, base.semanticRole, candidate.semanticRole);
+        double embedding = baseFieldEmbedding == null || candidate.fieldEmbeddingVector == null
+            ? 0.0
+            : LocalEmbeddingService.cosine(baseFieldEmbedding, candidate.fieldEmbeddingVector);
+        if (embedding > 0.0) {
+            return (0.24 * directName) + (0.18 * identityText) + (0.14 * placeholder) + (0.18 * embedding)
+                + (0.09 * autocomplete) + (0.05 * inputType) + (0.12 * control);
+        }
+        return (0.31 * directName) + (0.24 * identityText) + (0.18 * placeholder)
+            + (0.10 * autocomplete) + (0.05 * inputType) + (0.12 * control);
+    }
+
+    private static double fieldControlScore(String baseKind, String candidateKind, String baseRole, String candidateRole) {
+        double kind = strictFieldKindScore(baseKind, candidateKind);
+        double role = semanticRoleScore(baseRole, candidateRole, baseKind, candidateKind);
+        return (0.60 * kind) + (0.40 * role);
+    }
+
+    private static double strictFieldKindScore(String baseKind, String candidateKind) {
+        if (Objects.equals(baseKind, candidateKind)) {
+            return 1.0;
+        }
+        if ((Objects.equals(baseKind, "text") && Objects.equals(candidateKind, "select")) ||
+            (Objects.equals(baseKind, "select") && Objects.equals(candidateKind, "text"))) {
+            return 0.20;
+        }
+        return 0.0;
+    }
+
+    private static String normalizeAutocomplete(String value) {
+        if (value == null) return "";
+        String normalized = value.trim().toLowerCase();
+        if (normalized.isBlank()) return "";
+        String[] tokens = normalized.split("\\s+");
+        for (int i = tokens.length - 1; i >= 0; i--) {
+            String token = tokens[i];
+            if (token.isBlank()) continue;
+            if (token.startsWith("section-")) continue;
+            if (List.of("shipping", "billing", "home", "work", "mobile", "fax", "pager").contains(token)) continue;
+            return token;
+        }
+        return tokens[tokens.length - 1];
+    }
+
+    private static double strictAutocompleteScore(String baseAutocomplete, String candidateAutocomplete) {
+        String baseToken = normalizeAutocomplete(baseAutocomplete);
+        String candidateToken = normalizeAutocomplete(candidateAutocomplete);
+        if (baseToken.isBlank() || candidateToken.isBlank()) return 0.0;
+        return baseToken.equals(candidateToken) ? 1.0 : 0.0;
+    }
+
+    private static String normalizeRole(String role, String kind) {
+        String normalized = role == null ? "" : role.trim().toLowerCase();
+        if (!normalized.isBlank()) return normalized;
+        return switch (kind == null ? "" : kind) {
+            case "text" -> "textbox";
+            case "select" -> "combobox";
+            case "toggle" -> "checkbox";
+            case "action" -> "button";
+            default -> "";
+        };
+    }
+
+    private static String nv(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static String firstNonBlank(String primary, String fallback) {
+        String left = nv(primary).trim();
+        return left.isBlank() ? nv(fallback).trim() : left;
+    }
+
+    private static double scoreIfPresent(String a, String b) {
+        if (a == null || a.isBlank() || b == null || b.isBlank()) return 0.0;
+        return SemanticSimilarity.semanticScore(a, b);
+    }
+
+    private static void logTopCandidates(String key, List<CandidateMeta> meta, List<CandidateWrapper> sorted) {
+        int limit = Math.min(3, sorted.size());
+        for (int i = 0; i < limit; i++) {
+            CandidateWrapper cand = sorted.get(i);
+            CandidateMeta source = meta.stream()
+                .filter(m -> m.originalIndex == cand.originalIndex)
+                .findFirst()
+                .orElse(null);
+            String accessible = source == null ? "" : source.accessibleName;
+            System.out.println("[VISUAL-RANK] " + key + " rank=" + (i + 1)
+                + " idx=" + cand.originalIndex
+                + " score=" + String.format("%.3f", cand.score)
+                + " kind=" + cand.kind
+                + " seq=" + cand.sequence
+                + " sem=" + String.format("%.2f", cand.semanticScore)
+                + " field=" + String.format("%.2f", cand.fieldSemanticScore)
+                + " emb=" + String.format("%.2f", cand.embeddingScore)
+                + " accessible='" + accessible + "'"
+                + " selector=" + cand.selector);
         }
     }
 
@@ -325,7 +889,7 @@ public class VisualHealingEngine {
         if (!Objects.equals(baseKind, candidateKind)) {
             if ((Objects.equals(baseKind, "text") && Objects.equals(candidateKind, "select")) ||
                 (Objects.equals(baseKind, "select") && Objects.equals(candidateKind, "text"))) {
-                return 0.85;
+                return 0.40;
             }
             return 0.05;
         }
@@ -360,34 +924,124 @@ public class VisualHealingEngine {
             +"function nodeText(el) {"
             +"  return el && el.innerText ? el.innerText.trim() : '';"
             +"}"
+            +"function attr(el, name) {"
+            +"  return el ? String(el.getAttribute(name) || '').trim() : '';"
+            +"}"
+            +"function referencedText(ids) {"
+            +"  if (!ids) return '';"
+            +"  var parts = [];"
+            +"  ids.split(/\\s+/).forEach(function(id) {"
+            +"    if (!id) return;"
+            +"    var ref = document.getElementById(id);"
+            +"    push(parts, nodeText(ref));"
+            +"  });"
+            +"  return parts.join(' ');"
+            +"}"
+            +"function labelLikeText(el) {"
+            +"  if (!el) return '';"
+            +"  var aria = referencedText(attr(el, 'aria-labelledby'));"
+            +"  if (aria) return aria;"
+            +"  var direct = attr(el, 'aria-label') || attr(el, 'data-label');"
+            +"  if (direct) return direct;"
+            +"  var txt = nodeText(el);"
+            +"  if (!txt) return '';"
+            +"  var tag = el.tagName.toLowerCase();"
+            +"  var cls = attr(el, 'class').toLowerCase();"
+            +"  if (tag === 'label' || tag === 'legend') return txt;"
+            +"  if (cls.indexOf('label') >= 0 || cls.indexOf('title') >= 0) return txt;"
+            +"  if (tag === 'span' || tag === 'div' || tag === 'p' || tag === 'strong') return txt;"
+            +"  return '';"
+            +"}"
+            +"function isFieldLike(el) {"
+            +"  if (!el) return false;"
+            +"  var tag = el.tagName.toLowerCase();"
+            +"  var type = attr(el, 'type').toLowerCase();"
+            +"  var editable = attr(el, 'contenteditable').toLowerCase() === 'true';"
+            +"  if (editable || tag === 'textarea' || tag === 'select') return true;"
+            +"  if (tag === 'input') return type !== 'hidden';"
+            +"  return false;"
+            +"}"
             +"function nearestLabelText(el) {"
             +"  var parts = [];"
+            +"  push(parts, referencedText(attr(el, 'aria-labelledby')));"
+            +"  var wrappedLabel = el.closest('label');"
+            +"  push(parts, nodeText(wrappedLabel));"
             +"  if (el.id) {"
             +"    var byFor = document.querySelector('label[for=\\\"'+el.id+'\\\"]');"
             +"    push(parts, nodeText(byFor));"
             +"  }"
+            +"  if (parts.length) return [...new Set(parts)].join(' | ');"
             +"  var prev = el.previousElementSibling;"
-            +"  while (prev && parts.length < 2) {"
-            +"    push(parts, nodeText(prev));"
+            +"  while (prev) {"
+            +"    var prevLabel = labelLikeText(prev);"
+            +"    if (prevLabel) {"
+            +"      push(parts, prevLabel);"
+            +"      break;"
+            +"    }"
+            +"    if (isFieldLike(prev)) break;"
             +"    prev = prev.previousElementSibling;"
             +"  }"
             +"  return [...new Set(parts)].join(' | ');"
             +"}"
+            +"function computedRole(el) {"
+            +"  var role = attr(el, 'role').toLowerCase();"
+            +"  if (role) return role;"
+            +"  var tag = el.tagName.toLowerCase();"
+            +"  var type = attr(el, 'type').toLowerCase();"
+            +"  var editable = attr(el, 'contenteditable').toLowerCase() === 'true';"
+            +"  if (tag === 'button') return 'button';"
+            +"  if (tag === 'a' && attr(el, 'href')) return 'link';"
+            +"  if (tag === 'select') return 'combobox';"
+            +"  if (tag === 'textarea' || editable) return 'textbox';"
+            +"  if (tag === 'input') {"
+            +"    if (type === 'checkbox') return 'checkbox';"
+            +"    if (type === 'radio') return 'radio';"
+            +"    if (type === 'button' || type === 'submit' || type === 'reset') return 'button';"
+            +"    return 'textbox';"
+            +"  }"
+            +"  if (!!el.onclick) return 'button';"
+            +"  return tag;"
+            +"}"
+            +"function accessibleName(el) {"
+            +"  var labelledBy = referencedText(attr(el, 'aria-labelledby'));"
+            +"  if (labelledBy) return labelledBy;"
+            +"  var ariaLabel = attr(el, 'aria-label');"
+            +"  if (ariaLabel) return ariaLabel;"
+            +"  var label = nearestLabelText(el);"
+            +"  if (label) return label;"
+            +"  var title = attr(el, 'title');"
+            +"  if (title) return title;"
+            +"  var placeholder = attr(el, 'placeholder') || attr(el, 'data-placeholder');"
+            +"  if (placeholder) return placeholder;"
+            +"  var value = attr(el, 'value');"
+            +"  if (value) return value;"
+            +"  return nodeText(el);"
+            +"}"
+            +"function selectHint(el) {"
+            +"  var role = attr(el, 'role').toLowerCase();"
+            +"  if (role === 'combobox' || role === 'listbox') return true;"
+            +"  if (attr(el, 'aria-haspopup').toLowerCase() === 'listbox') return true;"
+            +"  var text = [attr(el, 'aria-label'), attr(el, 'placeholder'), attr(el, 'data-placeholder'), nearestLabelText(el), nodeText(el)].join(' ').toLowerCase();"
+            +"  if (!text) return false;"
+            +"  return /(\\bchoose\\b|\\bselect\\b|\\bpick\\b)/.test(text) || /(\\bcountry\\b|\\bnation\\b|\\bregion\\b|\\blocation\\b)/.test(text);"
+            +"}"
             +"function classify(el) {"
             +"  var tag = el.tagName.toLowerCase();"
-            +"  var type = (el.getAttribute('type') || '').toLowerCase();"
-            +"  var role = (el.getAttribute('role') || '').toLowerCase();"
-            +"  var editable = (el.getAttribute('contenteditable') || '').toLowerCase() === 'true';"
+            +"  var type = attr(el, 'type').toLowerCase();"
+            +"  var role = computedRole(el);"
+            +"  var editable = attr(el, 'contenteditable').toLowerCase() === 'true';"
             +"  if (tag === 'select') return 'select';"
+            +"  if (role === 'checkbox' || role === 'switch' || role === 'radio') return 'toggle';"
+            +"  if (el.classList.contains('fake-toggle') || el.querySelector('.toggle-box')) return 'toggle';"
+            +"  if (tag === 'button' || tag === 'a' || role === 'button' || role === 'link') return 'action';"
+            +"  if (selectHint(el)) return 'select';"
             +"  if (tag === 'textarea' || editable) return 'text';"
             +"  if (tag === 'input') {"
             +"    if (type === 'checkbox' || type === 'radio') return 'toggle';"
             +"    if (type === 'button' || type === 'submit' || type === 'reset') return 'action';"
             +"    return 'text';"
             +"  }"
-            +"  if (role === 'checkbox' || role === 'switch' || role === 'radio') return 'toggle';"
-            +"  if (el.classList.contains('fake-toggle') || el.querySelector('.toggle-box')) return 'toggle';"
-            +"  if (tag === 'button' || tag === 'a' || role === 'button' || role === 'link' || !!el.onclick) return 'action';"
+            +"  if (!!el.onclick) return 'action';"
             +"  return 'generic';"
             +"}"
             +"function getCssPath(el) {"
@@ -413,8 +1067,10 @@ public class VisualHealingEngine {
             +"function elementText(el) {"
             +"  var parts = [];"
             +"  push(parts, el.value);"
-            +"  push(parts, el.getAttribute('placeholder'));"
-            +"  push(parts, el.getAttribute('aria-label'));"
+            +"  push(parts, attr(el, 'placeholder'));"
+            +"  push(parts, attr(el, 'data-placeholder'));"
+            +"  push(parts, attr(el, 'aria-label'));"
+            +"  push(parts, accessibleName(el));"
             +"  push(parts, nodeText(el));"
             +"  push(parts, nearestLabelText(el));"
             +"  return [...new Set(parts)].join(' | ').substring(0, 120);"
@@ -439,6 +1095,9 @@ public class VisualHealingEngine {
             +"    idx:idx,"
             +"    selector:getCssPath(e),"
             +"    kind:classify(e),"
+            +"    accessibleName:accessibleName(e),"
+            +"    semanticRole:computedRole(e),"
+            +"    autocomplete:attr(e, 'autocomplete'),"
             +"    tag:e.tagName.toLowerCase()"
             +"  });"
             +"}"
@@ -455,45 +1114,137 @@ public class VisualHealingEngine {
             +"  if (value) parts.push(value);"
             +"}"
             +"function nodeText(el) { return el && el.innerText ? el.innerText.trim() : ''; }"
+            +"function attr(el, name) { return el ? String(el.getAttribute(name) || '').trim() : ''; }"
+            +"function referencedText(ids) {"
+            +"  if (!ids) return '';"
+            +"  var parts = [];"
+            +"  ids.split(/\\s+/).forEach(function(id) {"
+            +"    if (!id) return;"
+            +"    var ref = document.getElementById(id);"
+            +"    push(parts, nodeText(ref));"
+            +"  });"
+            +"  return parts.join(' ');"
+            +"}"
+            +"function labelLikeText(el) {"
+            +"  if (!el) return '';"
+            +"  var aria = referencedText(attr(el, 'aria-labelledby'));"
+            +"  if (aria) return aria;"
+            +"  var direct = attr(el, 'aria-label') || attr(el, 'data-label');"
+            +"  if (direct) return direct;"
+            +"  var txt = nodeText(el);"
+            +"  if (!txt) return '';"
+            +"  var tag = el.tagName.toLowerCase();"
+            +"  var cls = attr(el, 'class').toLowerCase();"
+            +"  if (tag === 'label' || tag === 'legend') return txt;"
+            +"  if (cls.indexOf('label') >= 0 || cls.indexOf('title') >= 0) return txt;"
+            +"  if (tag === 'span' || tag === 'div' || tag === 'p' || tag === 'strong') return txt;"
+            +"  return '';"
+            +"}"
+            +"function isFieldLike(el) {"
+            +"  if (!el) return false;"
+            +"  var tag = el.tagName.toLowerCase();"
+            +"  var type = attr(el, 'type').toLowerCase();"
+            +"  var editable = attr(el, 'contenteditable').toLowerCase() === 'true';"
+            +"  if (editable || tag === 'textarea' || tag === 'select') return true;"
+            +"  if (tag === 'input') return type !== 'hidden';"
+            +"  return false;"
+            +"}"
             +"function nearestLabelText(el) {"
             +"  var parts = [];"
+            +"  push(parts, referencedText(attr(el, 'aria-labelledby')));"
+            +"  var wrappedLabel = el.closest('label');"
+            +"  push(parts, nodeText(wrappedLabel));"
             +"  if (el.id) {"
             +"    var byFor = document.querySelector('label[for=\\\"'+el.id+'\\\"]');"
             +"    push(parts, nodeText(byFor));"
             +"  }"
+            +"  if (parts.length) return [...new Set(parts)].join(' | ');"
             +"  var prev = el.previousElementSibling;"
-            +"  while (prev && parts.length < 2) { push(parts, nodeText(prev)); prev = prev.previousElementSibling; }"
+            +"  while (prev) {"
+            +"    var prevLabel = labelLikeText(prev);"
+            +"    if (prevLabel) { push(parts, prevLabel); break; }"
+            +"    if (isFieldLike(prev)) break;"
+            +"    prev = prev.previousElementSibling;"
+            +"  }"
             +"  return [...new Set(parts)].join(' | ');"
+            +"}"
+            +"function computedRole(el) {"
+            +"  var role = attr(el, 'role').toLowerCase();"
+            +"  if (role) return role;"
+            +"  var tag = el.tagName.toLowerCase();"
+            +"  var type = attr(el, 'type').toLowerCase();"
+            +"  var editable = attr(el, 'contenteditable').toLowerCase() === 'true';"
+            +"  if (tag === 'button') return 'button';"
+            +"  if (tag === 'a' && attr(el, 'href')) return 'link';"
+            +"  if (tag === 'select') return 'combobox';"
+            +"  if (selectHint(el)) return 'combobox';"
+            +"  if (tag === 'textarea' || editable) return 'textbox';"
+            +"  if (tag === 'input') {"
+            +"    if (type === 'checkbox') return 'checkbox';"
+            +"    if (type === 'radio') return 'radio';"
+            +"    if (type === 'button' || type === 'submit' || type === 'reset') return 'button';"
+            +"    return 'textbox';"
+            +"  }"
+            +"  if (!!el.onclick) return 'button';"
+            +"  return tag;"
+            +"}"
+            +"function accessibleName(el) {"
+            +"  var labelledBy = referencedText(attr(el, 'aria-labelledby'));"
+            +"  if (labelledBy) return labelledBy;"
+            +"  var ariaLabel = attr(el, 'aria-label');"
+            +"  if (ariaLabel) return ariaLabel;"
+            +"  var label = nearestLabelText(el);"
+            +"  if (label) return label;"
+            +"  var title = attr(el, 'title');"
+            +"  if (title) return title;"
+            +"  var placeholder = attr(el, 'placeholder') || attr(el, 'data-placeholder');"
+            +"  if (placeholder) return placeholder;"
+            +"  var value = attr(el, 'value');"
+            +"  if (value) return value;"
+            +"  return nodeText(el);"
+            +"}"
+            +"function selectHint(el) {"
+            +"  var role = attr(el, 'role').toLowerCase();"
+            +"  if (role === 'combobox' || role === 'listbox') return true;"
+            +"  if (attr(el, 'aria-haspopup').toLowerCase() === 'listbox') return true;"
+            +"  var text = [attr(el, 'aria-label'), attr(el, 'placeholder'), attr(el, 'data-placeholder'), nearestLabelText(el), nodeText(el)].join(' ').toLowerCase();"
+            +"  if (!text) return false;"
+            +"  return /(\\bchoose\\b|\\bselect\\b|\\bpick\\b)/.test(text) || /(\\bcountry\\b|\\bnation\\b|\\bregion\\b|\\blocation\\b)/.test(text);"
             +"}"
             +"function classify(el) {"
             +"  var tag = el.tagName.toLowerCase();"
-            +"  var type = (el.getAttribute('type') || '').toLowerCase();"
-            +"  var role = (el.getAttribute('role') || '').toLowerCase();"
-            +"  var editable = (el.getAttribute('contenteditable') || '').toLowerCase() === 'true';"
+            +"  var type = attr(el, 'type').toLowerCase();"
+            +"  var role = computedRole(el);"
+            +"  var editable = attr(el, 'contenteditable').toLowerCase() === 'true';"
             +"  if (tag === 'select') return 'select';"
+            +"  if (role === 'checkbox' || role === 'switch' || role === 'radio') return 'toggle';"
+            +"  if (el.classList.contains('fake-toggle') || el.querySelector('.toggle-box')) return 'toggle';"
+            +"  if (tag === 'button' || tag === 'a' || role === 'button' || role === 'link') return 'action';"
+            +"  if (selectHint(el)) return 'select';"
             +"  if (tag === 'textarea' || editable) return 'text';"
             +"  if (tag === 'input') {"
             +"    if (type === 'checkbox' || type === 'radio') return 'toggle';"
             +"    if (type === 'button' || type === 'submit' || type === 'reset') return 'action';"
             +"    return 'text';"
             +"  }"
-            +"  if (role === 'checkbox' || role === 'switch' || role === 'radio') return 'toggle';"
-            +"  if (el.classList.contains('fake-toggle') || el.querySelector('.toggle-box')) return 'toggle';"
-            +"  if (tag === 'button' || tag === 'a' || role === 'button' || role === 'link' || !!el.onclick) return 'action';"
+            +"  if (!!el.onclick) return 'action';"
             +"  return 'generic';"
             +"}"
             +"var e=arguments[0], r=e.getBoundingClientRect(), parts=[];"
             +"var sx=Math.round(window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0);"
             +"var sy=Math.round(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);"
             +"push(parts, e.value);"
-            +"push(parts, e.getAttribute('placeholder'));"
-            +"push(parts, e.getAttribute('aria-label'));"
+            +"push(parts, attr(e, 'placeholder'));"
+            +"push(parts, attr(e, 'data-placeholder'));"
+            +"push(parts, attr(e, 'aria-label'));"
+            +"push(parts, accessibleName(e));"
             +"push(parts, nodeText(e));"
             +"push(parts, nearestLabelText(e));"
             +"return {"
             +"  x:Math.round(r.left)+sx, y:Math.round(r.top)+sy, w:Math.round(r.width), h:Math.round(r.height),"
             +"  text:[...new Set(parts)].join(' | ').substring(0,120),"
-            +"  kind:classify(e), tag:e.tagName.toLowerCase()"
+            +"  kind:classify(e), tag:e.tagName.toLowerCase(),"
+            +"  accessibleName:accessibleName(e), semanticRole:computedRole(e), autocomplete:attr(e, 'autocomplete')"
             +"};",el);
     }
 
@@ -515,7 +1266,7 @@ public class VisualHealingEngine {
         if(baseKind == null || baseKind.isBlank()) return 0.5;
         if(candidateKind == null || candidateKind.isBlank()) return 0.3;
         if(baseKind.equals(candidateKind)) return 1.0;
-        if((baseKind.equals("text") && candidateKind.equals("select")) || (baseKind.equals("select") && candidateKind.equals("text"))) return 0.80;
+        if((baseKind.equals("text") && candidateKind.equals("select")) || (baseKind.equals("select") && candidateKind.equals("text"))) return 0.35;
         if(candidateKind.equals("generic") || baseKind.equals("generic")) return 0.40;
         return 0.05;
     }

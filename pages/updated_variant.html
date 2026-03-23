@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Updated Variant Page</title>
+    <style>
+        body {
+            font-family: Georgia, serif;
+            max-width: 720px;
+            margin: 32px auto;
+            padding: 24px;
+            background: linear-gradient(180deg, #f7f1e8 0%, #ece6dc 100%);
+            color: #2c2c2c;
+        }
+        .profile-shell {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid #d9cfc2;
+            border-radius: 18px;
+            padding: 28px;
+            box-shadow: 0 16px 40px rgba(74, 52, 34, 0.12);
+        }
+        h1 {
+            margin: 0 0 18px;
+            text-align: center;
+            font-size: 34px;
+            color: #5f3f2d;
+        }
+        .intro {
+            text-align: center;
+            margin-bottom: 24px;
+            color: #7a6252;
+            font-size: 15px;
+        }
+        .field {
+            margin: 14px 0;
+        }
+        .caption {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #8a6e5b;
+        }
+        .entry {
+            min-height: 42px;
+            padding: 10px 12px;
+            border: 1px solid #cfbea9;
+            border-radius: 10px;
+            background: #fffdf8;
+            box-sizing: border-box;
+            font-size: 15px;
+            color: #2d2d2d;
+        }
+        .entry:focus {
+            outline: none;
+            border-color: #a15f3b;
+            box-shadow: 0 0 0 3px rgba(161, 95, 59, 0.14);
+        }
+        .entry[data-placeholder]:empty::before {
+            content: attr(data-placeholder);
+            color: #b5a191;
+        }
+        .split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .choice-row {
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            color: #3b3028;
+        }
+        .choice-mark {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid #9d7e67;
+            background: #b77752;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45);
+            flex: 0 0 auto;
+        }
+        .choice-copy {
+            font-size: 15px;
+        }
+        .final-action {
+            width: 100%;
+            margin-top: 22px;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 14px;
+            background: #7a4b35;
+            color: #fff9f3;
+            font-size: 17px;
+            cursor: pointer;
+        }
+        .final-action:hover {
+            background: #623a28;
+        }
+    </style>
+</head>
+<body>
+<section class="profile-shell">
+    <h1>Member Profile</h1>
+    <p class="intro">A redesigned version of the registration form with different tags and grouping.</p>
+
+    <div class="field">
+        <span class="caption">Email Address</span>
+        <div class="entry" contenteditable="true" tabindex="0" data-placeholder="Type email"></div>
+    </div>
+
+    <div class="field">
+        <span class="caption">Phone Line</span>
+        <div class="entry" contenteditable="true" tabindex="0" data-placeholder="Type phone"></div>
+    </div>
+
+    <div class="split">
+        <div class="field">
+            <span class="caption">City Name</span>
+            <div class="entry" contenteditable="true" tabindex="0" data-placeholder="Type city"></div>
+        </div>
+        <div class="field">
+            <span class="caption">Nation Choice</span>
+            <div class="entry" contenteditable="true" tabindex="0" data-placeholder="Choose nation"></div>
+        </div>
+    </div>
+
+    <button class="final-action" type="button" onclick="alert('Submitted!')">Register Account</button>
+
+    <div class="field">
+        <span class="caption">Given Name</span>
+        <div class="entry" contenteditable="true" tabindex="0" data-placeholder="Type given name"></div>
+    </div>
+
+    <div class="field">
+        <span class="caption">Family Name</span>
+        <div class="entry" contenteditable="true" tabindex="0" data-placeholder="Type family name"></div>
+    </div>
+
+    <div class="split">
+        <div class="field">
+            <span class="caption">Postal Mark</span>
+            <div class="entry" contenteditable="true" tabindex="0" data-placeholder="Postal code"></div>
+        </div>
+    </div>
+
+    <div class="choice-row" tabindex="0" role="checkbox" aria-checked="true" onclick="this.classList.toggle('on')">
+        <div class="choice-mark"></div>
+        <span class="choice-copy">Accept Terms</span>
+    </div>
+
+    <div class="choice-row" tabindex="0" role="checkbox" aria-checked="true" onclick="this.classList.toggle('on')">
+        <div class="choice-mark"></div>
+        <span class="choice-copy">Newsletter Updates</span>
+    </div>
+</section>
+</body>
+</html>

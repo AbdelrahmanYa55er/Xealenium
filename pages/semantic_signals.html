@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Semantic Signals Page</title>
+    <style>
+        body { font-family: Segoe UI, sans-serif; margin: 32px auto; max-width: 560px; padding: 20px; }
+        .card { border: 1px solid #d6d6d6; border-radius: 12px; padding: 24px; }
+        .field { margin: 14px 0; }
+        .label { display: block; margin-bottom: 6px; font-weight: 600; }
+        input, div[contenteditable="true"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            min-height: 42px;
+            border: 1px solid #bdbdbd;
+            border-radius: 8px;
+        }
+        div[contenteditable="true"]:empty::before {
+            content: attr(data-placeholder);
+            color: #8a8a8a;
+        }
+    </style>
+</head>
+<body>
+<section class="card">
+    <div class="field">
+        <span id="email-label" class="label">Primary Email</span>
+        <input type="email" aria-labelledby="email-label" autocomplete="email">
+    </div>
+
+    <div class="field">
+        <span id="bio-label" class="label">Short Bio</span>
+        <div contenteditable="true" aria-labelledby="bio-label" data-placeholder="Write a quick intro"></div>
+    </div>
+</section>
+</body>
+</html>

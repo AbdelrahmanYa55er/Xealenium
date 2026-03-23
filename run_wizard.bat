@@ -6,10 +6,21 @@ set "ROOT=%~dp0"
 set "ROOT_URL=%ROOT:\=/%"
 set "BASELINE_URL=file:///%ROOT_URL%pages/baseline.html"
 set "UPDATED_URL=file:///%ROOT_URL%pages/updated.html"
+set "MODEL_DIR=%ROOT%models\gte-small-onnx"
+set "EMBEDDING_ARGS="
+if exist "%MODEL_DIR%\model.onnx" if exist "%MODEL_DIR%\tokenizer.json" (
+    set "EMBEDDING_ARGS=-Dvisual.embedding.enabled=true -Dvisual.embedding.modelDir=%MODEL_DIR% -Dvisual.embedding.modelName=gte-small"
+)
 
 echo ==========================================
 echo    Visual Healing Engine Configuration
 echo ==========================================
+echo.
+if defined EMBEDDING_ARGS (
+    echo Local embeddings detected: gte-small
+) else (
+    echo Local embeddings not detected. Running without embeddings.
+)
 echo.
 
 set i=false
@@ -27,15 +38,15 @@ if /i "%rebuild%"=="n" set refresh=false
 echo.
 echo [Step 1/2] Running baseline capture...
 if /i "%refresh%"=="true" (
-    call "%ROOT%gradlew.bat" "-DtestUrl=%BASELINE_URL%" "-Dinteractive=false" "-Dreport=false" "-Dvisual.captureBaseline.refresh=true" test --tests "com.demo.VisualDemoTests"
+    call "%ROOT%gradlew.bat" "-DtestUrl=%BASELINE_URL%" "-Dinteractive=false" "-Dreport=false" "-Dvisual.captureBaseline.refresh=true" %EMBEDDING_ARGS% test --tests "com.demo.VisualDemoTests"
 ) else (
-    call "%ROOT%gradlew.bat" "-DtestUrl=%BASELINE_URL%" "-Dinteractive=false" "-Dreport=false" test --tests "com.demo.VisualDemoTests"
+    call "%ROOT%gradlew.bat" "-DtestUrl=%BASELINE_URL%" "-Dinteractive=false" "-Dreport=false" %EMBEDDING_ARGS% test --tests "com.demo.VisualDemoTests"
 )
 if errorlevel 1 goto :fail
 
 echo.
 echo [Step 2/2] Running healing on updated page...
-call "%ROOT%gradlew.bat" "-DtestUrl=%UPDATED_URL%" "-Dinteractive=%i%" "-Dreport=%r%" test --tests "com.demo.VisualDemoTests"
+call "%ROOT%gradlew.bat" "-DtestUrl=%UPDATED_URL%" "-Dinteractive=%i%" "-Dreport=%r%" %EMBEDDING_ARGS% test --tests "com.demo.VisualDemoTests"
 if errorlevel 1 goto :fail
 
 echo.

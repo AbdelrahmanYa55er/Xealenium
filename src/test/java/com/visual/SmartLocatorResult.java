@@ -10,16 +10,23 @@ public class SmartLocatorResult {
     private final double score;
     private final String strategy;
     private final String detectedTag;
+    private final String accessibleName;
+    private final String semanticRole;
+    private final String autocomplete;
     private final List<LocatorCandidate> topCandidates;
     private final List<String> logs;
 
     public SmartLocatorResult(String locatorType, String locator, double score, String strategy,
-                              String detectedTag, List<LocatorCandidate> topCandidates, List<String> logs) {
+                              String detectedTag, String accessibleName, String semanticRole, String autocomplete,
+                              List<LocatorCandidate> topCandidates, List<String> logs) {
         this.locatorType = locatorType;
         this.locator = locator;
         this.score = score;
         this.strategy = strategy;
         this.detectedTag = detectedTag;
+        this.accessibleName = accessibleName;
+        this.semanticRole = semanticRole;
+        this.autocomplete = autocomplete;
         this.topCandidates = Collections.unmodifiableList(new ArrayList<>(topCandidates));
         this.logs = Collections.unmodifiableList(new ArrayList<>(logs));
     }
@@ -44,6 +51,18 @@ public class SmartLocatorResult {
         return detectedTag;
     }
 
+    public String getAccessibleName() {
+        return accessibleName;
+    }
+
+    public String getSemanticRole() {
+        return semanticRole;
+    }
+
+    public String getAutocomplete() {
+        return autocomplete;
+    }
+
     public List<LocatorCandidate> getTopCandidates() {
         return topCandidates;
     }
@@ -58,7 +77,10 @@ public class SmartLocatorResult {
         sb.append("\"locatorType\":\"").append(escape(locatorType)).append("\",");
         sb.append("\"locator\":\"").append(escape(locator)).append("\",");
         sb.append("\"score\":").append(String.format(java.util.Locale.US, "%.3f", score)).append(",");
-        sb.append("\"strategy\":\"").append(escape(strategy)).append("\"");
+        sb.append("\"strategy\":\"").append(escape(strategy)).append("\",");
+        sb.append("\"accessibleName\":\"").append(escape(accessibleName)).append("\",");
+        sb.append("\"semanticRole\":\"").append(escape(semanticRole)).append("\",");
+        sb.append("\"autocomplete\":\"").append(escape(autocomplete)).append("\"");
         if (!topCandidates.isEmpty()) {
             sb.append(",\"topCandidates\":[");
             for (int i = 0; i < topCandidates.size(); i++) {
