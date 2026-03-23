@@ -1,9 +1,12 @@
 package com.visual;
+import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.NoAlertPresentException;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.UnhandledAlertException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
@@ -20,15 +23,13 @@ import java.util.Set;
  */
 public class VisualDriver implements WebDriver,JavascriptExecutor,TakesScreenshot,Interactive {
     private final WebDriver wrapped;
-    private final WebDriver screenshotDriver; // raw ChromeDriver for screenshots
+    private final WebDriver screenshotDriver;
     private final VisualHealingEngine engine;
 
-    /** Uses the wrapped driver itself for screenshots too. */
     public VisualDriver(WebDriver wrapped){
         this.wrapped=wrapped; this.screenshotDriver=wrapped;
         engine=new VisualHealingEngine();
     }
-    /** Preferred: pass raw ChromeDriver as screenshotDriver to avoid proxy cast issues. */
     public VisualDriver(WebDriver wrapped, WebDriver screenshotDriver){
         this.wrapped=wrapped; this.screenshotDriver=screenshotDriver;
         engine=new VisualHealingEngine();
@@ -39,10 +40,23 @@ public class VisualDriver implements WebDriver,JavascriptExecutor,TakesScreensho
 
     @Override
     public WebElement findElement(By by){
+        dismissUnexpectedAlert();
         try{
             WebElement el=wrapped.findElement(by);
             engine.captureBaseline(screenshotDriver,el,by);
             return el;
+        }catch(UnhandledAlertException uae){
+            if (dismissUnexpectedAlert()) {
+                try {
+                    WebElement el=wrapped.findElement(by);
+                    engine.captureBaseline(screenshotDriver,el,by);
+                    return el;
+                } catch (NoSuchElementException retryNse) {
+                    System.out.println("[VISUAL-DRIVER] Fallback for "+by+" after alert recovery");
+                    return fallback(by,retryNse);
+                }
+            }
+            throw uae;
         }catch(NoSuchElementException nse){
             System.out.println("[VISUAL-DRIVER] Fallback for "+by);
             return fallback(by,nse);
@@ -56,7 +70,6 @@ public class VisualDriver implements WebDriver,JavascriptExecutor,TakesScreensho
         ScoreResult r=engine.heal(screenshotDriver,by);
         if(r.decision==ScoreResult.Decision.HEALED && r.candidateIndex >= 0){
             try{
-                // Retrieve the actual DOM element reference using the index
                 WebElement el=(WebElement)((JavascriptExecutor)wrapped).executeScript(
                     "return window.__visualCandidates ? window.__visualCandidates[arguments[0]] : null;", r.candidateIndex);
                 if(el!=null){
@@ -69,6 +82,16 @@ public class VisualDriver implements WebDriver,JavascriptExecutor,TakesScreensho
         }
         System.out.println("[VISUAL-DRIVER] Safety ABORT "+by+" score="+String.format("%.3f",r.totalScore));
         throw orig;
+    }
+    private boolean dismissUnexpectedAlert() {
+        try {
+            Alert alert = wrapped.switchTo().alert();
+            System.out.println("[VISUAL-DRIVER] Dismissing unexpected alert: " + alert.getText());
+            alert.accept();
+            return true;
+        } catch (NoAlertPresentException e) {
+            return false;
+        }
     }
     @Override public void get(String u){wrapped.get(u);}
     @Override public String getCurrentUrl(){return wrapped.getCurrentUrl();}
