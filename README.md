@@ -106,6 +106,93 @@ When Selenium and Healenium both fail:
 
 It rejects non-unique candidates and avoids absolute XPath or deep DOM chains unless it has no better option.
 
+### Smart locator builder flow
+
+The locator builder is intentionally separate from the visual matcher. Visual healing first finds the most likely DOM element. After that, `SmartLocatorBuilder` converts that element into a robust Selenium locator.
+
+Its flow is:
+
+1. Detect the target element from either screen coordinates or a concrete `WebElement`
+2. Normalize the DOM target so inner spans, icons, and decorative wrappers resolve to a meaningful control
+3. Extract semantic attributes and surrounding context
+4. Generate multiple locator candidates
+5. Validate each candidate for uniqueness and exact element identity
+6. Score and rank the valid candidates
+7. Return the best locator plus fallback candidates and debug logs
+
+### What the builder extracts
+
+For each detected element, the builder collects:
+
+- `id`
+- `name`
+- `class`
+- `data-testid`
+- `data-test`
+- `aria-label`
+- `placeholder` / `data-placeholder`
+- tag name
+- type
+- visible text
+- nearest label-like text
+- parent text
+- nearest stable ancestor information
+
+This is especially important for non-standard controls such as:
+
+- `contenteditable` fields
+- clickable `div` containers
+- fake toggles
+- links that behave like buttons
+
+### Candidate strategies
+
+The builder generates several locator strategies and keeps only the ones that are unique and point to the exact same element:
+
+- test attribute selectors
+- stable `id`
+- `name`
+- `aria-label`
+- placeholder selectors
+- label-based XPath
+- class + text XPath for meaningful clickable containers
+- ancestor + attribute combinations
+
+The goal is not to preserve the old selector shape. Phase 3 is meant for cases where the DOM has changed enough that the original locator contract is no longer worth imitating.
+
+### Candidate rejection rules
+
+The builder rejects:
+
+- non-unique selectors
+- selectors that resolve to the wrong element
+- dynamic-looking ids and attributes
+- generic classes such as layout wrappers
+- fragile selectors like absolute XPath
+
+### Scoring model
+
+Accepted candidates are ranked using a weighted heuristic that favors:
+
+- strong semantic attributes
+- uniqueness
+- stability
+- readability
+
+In practice this means selectors based on `data-testid`, stable `id`, clear labels, and readable text beat layout-oriented selectors or generic container paths.
+
+### Returned result
+
+The builder returns:
+
+- the best locator type and locator value
+- the winning strategy
+- the final score
+- the top fallback locator candidates
+- detailed generation and rejection logs
+
+This is what the visual healer now records in the report instead of relying on the old raw CSS path generator.
+
 ## Human In The Loop
 
 With `-Dinteractive=true`, the visual engine opens a confirmation dialog for each heal. The dialog shows:
