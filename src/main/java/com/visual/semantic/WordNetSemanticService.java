@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.semantic;
 
 import net.sf.extjwnl.JWNLException;
 import net.sf.extjwnl.data.IndexWord;
@@ -268,3 +268,5 @@ final class WordNetSemanticService {
         return normalize(value);
     }
 }
+
+

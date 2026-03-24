@@ -1,8 +1,8 @@
 package com.demo;
 
 import com.epam.healenium.SelfHealingDriver;
-import com.visual.VisualDriver;
-import com.visual.VisualHealingEngine;
+import com.visual.driver.VisualDriver;
+import com.visual.engine.VisualHealingEngine;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;

@@ -1,4 +1,9 @@
-package com.visual;
+package com.visual.locator;
+
+import com.visual.model.ExtractedElementMetadata;
+import com.visual.semantic.BrowserSemanticScripts;
+import com.visual.semantic.SemanticSignalExtractor;
+import com.visual.semantic.SemanticSignals;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.InvalidSelectorException;
@@ -40,7 +45,7 @@ public class SmartLocatorBuilder {
         List<String> logs = new ArrayList<>();
         log(logs, "input x=%d y=%d", x, y);
 
-        ExtractedElement extracted = detectElementFromPoint(x, y);
+        ExtractedElementMetadata extracted = detectElementFromPoint(x, y);
         return buildLocator(extracted, logs);
     }
 
@@ -48,11 +53,11 @@ public class SmartLocatorBuilder {
         List<String> logs = new ArrayList<>();
         log(logs, "input element=%s", element);
 
-        ExtractedElement extracted = detectElementFromElement(element);
+        ExtractedElementMetadata extracted = detectElementFromElement(element);
         return buildLocator(extracted, logs);
     }
 
-    private SmartLocatorResult buildLocator(ExtractedElement extracted, List<String> logs) {
+    private SmartLocatorResult buildLocator(ExtractedElementMetadata extracted, List<String> logs) {
         log(logs, "detected normalized tag=%s text='%s' label='%s' accessible='%s' role='%s' autocomplete='%s'",
             extracted.tagName, extracted.text, extracted.labelText, extracted.accessibleName, extracted.semanticRole, extracted.autocomplete);
         log(logs,
@@ -85,186 +90,24 @@ public class SmartLocatorBuilder {
     }
 
     @SuppressWarnings("unchecked")
-    private ExtractedElement detectElementFromPoint(int x, int y) {
-        Object raw = js.executeScript(locatorExtractionScript("document.elementFromPoint(arguments[0], arguments[1])"), x, y);
+    private ExtractedElementMetadata detectElementFromPoint(int x, int y) {
+        Object raw = js.executeScript(BrowserSemanticScripts.locatorExtractionScript("document.elementFromPoint(arguments[0], arguments[1])"), x, y);
         return withSemanticSignals(toExtractedElement(raw, "No DOM element found at point (" + x + "," + y + ")"));
     }
 
     @SuppressWarnings("unchecked")
-    private ExtractedElement detectElementFromElement(WebElement element) {
-        Object raw = js.executeScript(locatorExtractionScript("arguments[0]"), element);
+    private ExtractedElementMetadata detectElementFromElement(WebElement element) {
+        Object raw = js.executeScript(BrowserSemanticScripts.locatorExtractionScript("arguments[0]"), element);
         return withSemanticSignals(toExtractedElement(raw, "Could not normalize DOM element " + element));
     }
 
-    private String locatorExtractionScript(String startExpression) {
-        return ("""
-            function trim(v) { return v ? String(v).trim() : ''; }
-            function textOf(el) { return el && el.innerText ? el.innerText.replace(/\\s+/g, ' ').trim() : ''; }
-            function attr(el, name) { return el ? trim(el.getAttribute(name)) : ''; }
-            function referencedText(ids) {
-              if (!ids) return '';
-              var parts = [];
-              ids.split(/\\s+/).forEach(function(id) {
-                if (!id) return;
-                var ref = document.getElementById(id);
-                var txt = textOf(ref);
-                if (txt) parts.push(txt);
-              });
-              return parts.join(' ');
-            }
-            function explicitRole(el) {
-              return attr(el, 'role').toLowerCase();
-            }
-            function computedRole(el) {
-              var role = explicitRole(el);
-              if (role) return role;
-              if (!el) return '';
-              var tag = el.tagName.toLowerCase();
-              var type = attr(el, 'type').toLowerCase();
-              if (tag === 'button') return 'button';
-              if (tag === 'a' && attr(el, 'href')) return 'link';
-              if (tag === 'select') return 'combobox';
-              if (tag === 'textarea') return 'textbox';
-              if (tag === 'input') {
-                if (type === 'checkbox') return 'checkbox';
-                if (type === 'radio') return 'radio';
-                if (type === 'button' || type === 'submit' || type === 'reset') return 'button';
-                return 'textbox';
-              }
-              if (attr(el, 'contenteditable').toLowerCase() === 'true') return 'textbox';
-              if (el.onclick) return 'button';
-              var tabIndex = el.getAttribute('tabindex');
-              if (tabIndex !== null && Number(tabIndex) >= 0 && textOf(el)) return 'button';
-              return tag;
-            }
-            function isClickable(el) {
-              if (!el) return false;
-              var tag = el.tagName.toLowerCase();
-              var role = computedRole(el);
-              if (tag === 'button' || tag === 'a' || tag === 'input' || tag === 'select' || tag === 'textarea') return true;
-              if (attr(el, 'contenteditable').toLowerCase() === 'true') return true;
-              if (role === 'button' || role === 'link' || role === 'checkbox' || role === 'switch' || role === 'radio') return true;
-              if (el.onclick) return true;
-              var tabIndex = el.getAttribute('tabindex');
-              return tabIndex !== null && Number(tabIndex) >= 0;
-            }
-            function isMeaningful(el) {
-              if (!el) return false;
-              var tag = el.tagName.toLowerCase();
-              if (tag === 'input' || tag === 'button' || tag === 'select' || tag === 'textarea') return true;
-              if (attr(el, 'contenteditable').toLowerCase() === 'true') return true;
-              if (isClickable(el) && textOf(el)) return true;
-              if (isClickable(el) && tag === 'div') return true;
-              return false;
-            }
-            function nearestLabelText(el) {
-              if (!el) return '';
-              var labelledBy = referencedText(attr(el, 'aria-labelledby'));
-              if (labelledBy) return labelledBy;
-              var wrappedLabel = el.closest('label');
-              if (wrappedLabel && textOf(wrappedLabel)) return textOf(wrappedLabel);
-              if (el.id) {
-                var byFor = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
-                if (byFor && textOf(byFor)) return textOf(byFor);
-              }
-              var current = el;
-              while (current && current.parentElement) {
-                var prev = current.previousElementSibling;
-                while (prev) {
-                  var prevText = textOf(prev) || attr(prev, 'aria-label') || attr(prev, 'data-label');
-                  if (prevText) return prevText;
-                  prev = prev.previousElementSibling;
-                }
-                var parent = current.parentElement;
-                var labels = parent.querySelectorAll(':scope > label, :scope > .e-title, :scope > [data-label], :scope > [aria-label]');
-                for (var i = labels.length - 1; i >= 0; i--) {
-                  if (labels[i] === current || labels[i].contains(current)) continue;
-                  var txt = textOf(labels[i]) || attr(labels[i], 'aria-label') || attr(labels[i], 'data-label');
-                  if (txt) return txt;
-                }
-                current = parent;
-              }
-              return '';
-            }
-            function accessibleName(el) {
-              if (!el) return '';
-              var labelledBy = referencedText(attr(el, 'aria-labelledby'));
-              if (labelledBy) return labelledBy;
-              var ariaLabel = attr(el, 'aria-label');
-              if (ariaLabel) return ariaLabel;
-              var labelText = nearestLabelText(el);
-              if (labelText) return labelText;
-              var title = attr(el, 'title');
-              if (title) return title;
-              var placeholder = attr(el, 'placeholder') || attr(el, 'data-placeholder');
-              if (placeholder) return placeholder;
-              var value = attr(el, 'value');
-              if (value && (computedRole(el) === 'button' || el.tagName.toLowerCase() === 'input')) return value;
-              return textOf(el);
-            }
-            function nearestStableAncestor(el) {
-              var current = el ? el.parentElement : null;
-              while (current) {
-                var dataTestId = attr(current, 'data-testid');
-                var dataTest = attr(current, 'data-test');
-                var id = attr(current, 'id');
-                var cls = attr(current, 'class');
-                if (dataTestId || dataTest || id || cls) {
-                  return {
-                    id: id, dataTestId: dataTestId, dataTest: dataTest,
-                    className: cls, tagName: current.tagName.toLowerCase()
-                  };
-                }
-                current = current.parentElement;
-              }
-              return { id: '', dataTestId: '', dataTest: '', className: '', tagName: '' };
-            }
-            function normalize(el) {
-              var current = el;
-              while (current) {
-                if (isMeaningful(current)) return current;
-                if (!current.parentElement) return current;
-                current = current.parentElement;
-              }
-              return el;
-            }
-            var start = %s;
-            if (!start) return null;
-            var target = normalize(start);
-            var ancestor = nearestStableAncestor(target);
-            return [target, {
-              tagName: target.tagName.toLowerCase(),
-              id: attr(target, 'id'),
-              name: attr(target, 'name'),
-              className: attr(target, 'class'),
-              dataTestId: attr(target, 'data-testid'),
-              dataTest: attr(target, 'data-test'),
-              ariaLabel: attr(target, 'aria-label'),
-              placeholder: attr(target, 'placeholder') || attr(target, 'data-placeholder'),
-              accessibleName: accessibleName(target),
-              type: attr(target, 'type'),
-              text: textOf(target),
-              labelText: nearestLabelText(target),
-              parentText: textOf(target.parentElement),
-              role: computedRole(target),
-              autocomplete: attr(target, 'autocomplete'),
-              contentEditable: attr(target, 'contenteditable'),
-              ancestorId: ancestor.id,
-              ancestorDataTestId: ancestor.dataTestId,
-              ancestorDataTest: ancestor.dataTest,
-              ancestorClassName: ancestor.className,
-              ancestorTagName: ancestor.tagName
-            }];
-            """).formatted(startExpression);
-    }
-
     @SuppressWarnings("unchecked")
-    private ExtractedElement toExtractedElement(Object raw, String errorMessage) {
+    private ExtractedElementMetadata toExtractedElement(Object raw, String errorMessage) {
         if (!(raw instanceof List<?> parts) || parts.size() < 2 || !(parts.get(0) instanceof WebElement element)) {
             throw new NoSuchElementException(errorMessage);
         }
         Map<String, Object> meta = (Map<String, Object>) parts.get(1);
-        return new ExtractedElement(
+        return new ExtractedElementMetadata(
             element,
             str(meta.get("tagName")),
             str(meta.get("id")),
@@ -290,9 +133,9 @@ public class SmartLocatorBuilder {
         );
     }
 
-    private ExtractedElement withSemanticSignals(ExtractedElement extracted) {
+    private ExtractedElementMetadata withSemanticSignals(ExtractedElementMetadata extracted) {
         SemanticSignals signals = semanticExtractor.extract(driver, extracted.element);
-        return new ExtractedElement(
+        return new ExtractedElementMetadata(
             extracted.element,
             extracted.tagName,
             extracted.id,
@@ -318,7 +161,7 @@ public class SmartLocatorBuilder {
         );
     }
 
-    private List<Candidate> generateCandidates(ExtractedElement extracted, List<String> logs) {
+    private List<Candidate> generateCandidates(ExtractedElementMetadata extracted, List<String> logs) {
         List<Candidate> candidates = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
 
@@ -426,7 +269,7 @@ public class SmartLocatorBuilder {
         return candidates;
     }
 
-    private void evaluateCandidate(Candidate candidate, ExtractedElement extracted, List<String> logs) {
+    private void evaluateCandidate(Candidate candidate, ExtractedElementMetadata extracted, List<String> logs) {
         By by = "xpath".equals(candidate.locatorType) ? By.xpath(candidate.locator) : By.cssSelector(candidate.locator);
         List<WebElement> matches;
         try {
@@ -482,33 +325,33 @@ public class SmartLocatorBuilder {
         log(logs, "generated %s=%s strategy=%s", locatorType, locator, strategy);
     }
 
-    private static boolean isTextAction(ExtractedElement extracted) {
+    private static boolean isTextAction(ExtractedElementMetadata extracted) {
         return Objects.equals(extracted.tagName, "button")
             || Objects.equals(extracted.tagName, "a")
             || Objects.equals(extracted.semanticRole, "button")
             || Objects.equals(extracted.semanticRole, "link");
     }
 
-    private static boolean isClickableContainer(ExtractedElement extracted) {
+    private static boolean isClickableContainer(ExtractedElementMetadata extracted) {
         return !extracted.text.isBlank() && (!extracted.semanticRole.isBlank()
             || extracted.contentEditable.equalsIgnoreCase("true")
             || isStableClassToken(primaryStableClass(extracted.className)));
     }
 
-    private static boolean shouldUseLabelBased(ExtractedElement extracted) {
+    private static boolean shouldUseLabelBased(ExtractedElementMetadata extracted) {
         if (extracted.contentEditable.equalsIgnoreCase("true")) return true;
         if (Set.of("input", "textarea", "select").contains(extracted.tagName)) return true;
         return extracted.text.isBlank();
     }
 
-    private static String xpathTagPredicate(ExtractedElement extracted) {
+    private static String xpathTagPredicate(ExtractedElementMetadata extracted) {
         if (extracted.contentEditable.equalsIgnoreCase("true")) return "@contenteditable='true'";
         if (Set.of("input", "textarea", "select", "button", "a").contains(extracted.tagName)) return "self::" + extracted.tagName;
         if (!extracted.semanticRole.isBlank()) return "@role='" + extracted.semanticRole + "'";
         return "self::" + extracted.tagName;
     }
 
-    private static String stableAncestorSelector(ExtractedElement extracted) {
+    private static String stableAncestorSelector(ExtractedElementMetadata extracted) {
         if (isStableValue(extracted.ancestorDataTestId)) return "[data-testid=\"" + cssValue(extracted.ancestorDataTestId) + "\"]";
         if (isStableValue(extracted.ancestorDataTest)) return "[data-test=\"" + cssValue(extracted.ancestorDataTest) + "\"]";
         if (isStableValue(extracted.ancestorId)) {
@@ -637,57 +480,6 @@ public class SmartLocatorBuilder {
         }
     }
 
-    private static class ExtractedElement {
-        final WebElement element;
-        final String tagName;
-        final String id;
-        final String name;
-        final String className;
-        final String dataTestId;
-        final String dataTest;
-        final String ariaLabel;
-        final String placeholder;
-        final String accessibleName;
-        final String type;
-        final String text;
-        final String labelText;
-        final String parentText;
-        final String semanticRole;
-        final String autocomplete;
-        final String contentEditable;
-        final String ancestorId;
-        final String ancestorDataTestId;
-        final String ancestorDataTest;
-        final String ancestorClassName;
-        final String ancestorTagName;
-
-        ExtractedElement(WebElement element, String tagName, String id, String name, String className,
-                         String dataTestId, String dataTest, String ariaLabel, String placeholder, String accessibleName, String type,
-                         String text, String labelText, String parentText, String semanticRole, String autocomplete, String contentEditable,
-                         String ancestorId, String ancestorDataTestId, String ancestorDataTest,
-                         String ancestorClassName, String ancestorTagName) {
-            this.element = element;
-            this.tagName = tagName;
-            this.id = id;
-            this.name = name;
-            this.className = className;
-            this.dataTestId = dataTestId;
-            this.dataTest = dataTest;
-            this.ariaLabel = ariaLabel;
-            this.placeholder = placeholder;
-            this.accessibleName = accessibleName;
-            this.type = type;
-            this.text = text;
-            this.labelText = labelText;
-            this.parentText = parentText;
-            this.semanticRole = semanticRole;
-            this.autocomplete = autocomplete;
-            this.contentEditable = contentEditable;
-            this.ancestorId = ancestorId;
-            this.ancestorDataTestId = ancestorDataTestId;
-            this.ancestorDataTest = ancestorDataTest;
-            this.ancestorClassName = ancestorClassName;
-            this.ancestorTagName = ancestorTagName;
-        }
-    }
 }
+
+

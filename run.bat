@@ -5,9 +5,9 @@ set "ROOT_URL=%ROOT:\=/%"
 set "BASELINE_URL=file:///%ROOT_URL%pages/baseline.html"
 set "UPDATED_URL=file:///%ROOT_URL%pages/updated.html"
 set "MODEL_DIR=%ROOT%models\gte-small-onnx"
-set "EMBEDDING_ARGS="
+set "EMBEDDING_ARGS=-Dvisual.embedding.enabled=true"
 if exist "%MODEL_DIR%\model.onnx" if exist "%MODEL_DIR%\tokenizer.json" (
-    set "EMBEDDING_ARGS=-Dvisual.embedding.enabled=true -Dvisual.embedding.modelDir=%MODEL_DIR% -Dvisual.embedding.modelName=gte-small"
+    set "EMBEDDING_ARGS=%EMBEDDING_ARGS% -Dvisual.embedding.modelDir=%MODEL_DIR% -Dvisual.embedding.modelName=gte-small"
 )
 
 echo ============================================================
@@ -15,9 +15,12 @@ echo   Visual Self-Healing Engine Runner
 echo ============================================================
 echo.
 if defined EMBEDDING_ARGS (
-echo   Embeddings: ON  ^(gte-small local model detected^)
+echo   Embeddings: REQUESTED
+if exist "%MODEL_DIR%\model.onnx" if exist "%MODEL_DIR%\tokenizer.json" (
+echo   Model: gte-small ^(local model detected^)
 ) else (
-echo   Embeddings: OFF ^(models\gte-small-onnx not found^)
+echo   Model: not found ^(runtime will log fallback reason^)
+)
 )
 echo.
 echo   [Step 1] Running BASELINE capture...

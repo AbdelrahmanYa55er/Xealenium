@@ -1,4 +1,10 @@
-package com.visual;
+package com.visual.driver;
+
+import com.visual.engine.VisualHealingEngine;
+import com.visual.locator.SmartLocatorBuilder;
+import com.visual.locator.SmartLocatorResult;
+import com.visual.model.ScoreResult;
+
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;

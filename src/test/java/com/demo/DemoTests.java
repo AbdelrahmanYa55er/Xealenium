@@ -25,13 +25,11 @@ public class DemoTests {
         testUrl = System.getProperty("testUrl", "file:///c:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/pages/baseline.html");
     }
 
-    private void slow() throws Exception { Thread.sleep(600); }
+    private void slow() {}
 
     @Test
     public void testFullRegistrationFlow() throws Exception {
         driver.get(testUrl);
-        Thread.sleep(2000);
-
         System.out.println("--- Starting form fill ---");
 
         WebElement fname = driver.findElement(By.id("fname"));
@@ -84,7 +82,6 @@ public class DemoTests {
         assertNotNull(submitBtn);
 
         System.out.println("--- Form fill complete & submitted ---");
-        Thread.sleep(4000);
     }
 
     @AfterEach

@@ -1,4 +1,6 @@
-package com.visual;
+package com.visual.baseline;
+
+import com.visual.model.ElementSnapshot;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

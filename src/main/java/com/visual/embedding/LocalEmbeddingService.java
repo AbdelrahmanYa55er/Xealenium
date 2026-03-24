@@ -1,4 +1,6 @@
-package com.visual;
+package com.visual.embedding;
+
+import com.visual.model.ElementSnapshot;
 
 import ai.djl.huggingface.tokenizers.Encoding;
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer;
@@ -156,6 +158,12 @@ public class LocalEmbeddingService {
             return Files.exists(path) ? path : null;
         }
         String modelDir = System.getProperty("visual.embedding.modelDir", "").trim();
+        if (modelDir.isBlank()) {
+            Path defaultDir = Path.of("models", "gte-small-onnx").toAbsolutePath();
+            if (Files.isDirectory(defaultDir)) {
+                modelDir = defaultDir.toString();
+            }
+        }
         if (modelDir.isBlank()) {
             return null;
         }
@@ -336,3 +344,5 @@ public class LocalEmbeddingService {
         }
     }
 }
+
+

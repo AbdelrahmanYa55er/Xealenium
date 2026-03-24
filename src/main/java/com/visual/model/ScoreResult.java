@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.model;
 public final class ScoreResult {
     public enum Decision { HEALED, ABORTED }
     public final Decision decision;

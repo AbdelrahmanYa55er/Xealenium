@@ -1,7 +1,7 @@
 package com.demo;
 
 import com.epam.healenium.SelfHealingDriver;
-import com.visual.VisualDriver;
+import com.visual.driver.VisualDriver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
@@ -59,8 +59,6 @@ public class VisualPageMatrixTests {
 
     private void fillForm(String url) throws Exception {
         driver.get(url);
-        Thread.sleep(800);
-
         WebElement fname = driver.findElement(By.id("fname"));
         assertSemanticTarget("fname", fname, "first name", "given name", "forename", "fname");
         clearIfSupported(fname);
@@ -126,11 +124,9 @@ public class VisualPageMatrixTests {
         submitBtn.click();
         assertNotNull(submitBtn);
 
-        Thread.sleep(1200);
     }
 
-    private void slow() throws Exception {
-        Thread.sleep(400);
+    private void slow() {
     }
 
     private void clearIfSupported(WebElement element) {

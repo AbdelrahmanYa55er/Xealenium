@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ElementSnapshot {

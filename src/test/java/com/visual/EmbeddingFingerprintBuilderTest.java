@@ -1,5 +1,6 @@
 package com.visual;
 
+import com.visual.embedding.EmbeddingFingerprintBuilder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;

@@ -1,5 +1,8 @@
 package com.visual;
 
+import com.visual.driver.VisualDriver;
+import com.visual.locator.SmartLocatorBuilder;
+import com.visual.locator.SmartLocatorResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

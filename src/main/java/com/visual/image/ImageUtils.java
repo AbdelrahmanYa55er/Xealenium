@@ -1,4 +1,7 @@
-package com.visual;
+package com.visual.image;
+
+import com.visual.driver.VisualDriver;
+
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;

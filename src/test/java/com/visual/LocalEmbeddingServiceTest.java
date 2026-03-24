@@ -1,5 +1,4 @@
-package com.visual;
-
+package com.visual.embedding;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +17,7 @@ public class LocalEmbeddingServiceTest {
     @Test
     void staysDisabledWhenNoModelIsConfigured() {
         clearEmbeddingProperties();
+        System.setProperty("visual.embedding.modelDir", "C:\\does-not-exist\\xealenium-no-model");
         LocalEmbeddingService service = LocalEmbeddingService.getInstance();
 
         assertFalse(service.isEnabled());

@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.semantic;
 
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -90,3 +90,5 @@ public class SemanticSignalExtractor {
         return trim(value).toLowerCase();
     }
 }
+
+

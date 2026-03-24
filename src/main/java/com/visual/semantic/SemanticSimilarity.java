@@ -1,4 +1,5 @@
-package com.visual;
+package com.visual.semantic;
+
 import java.util.*;
 /**
  * Lightweight lexical similarity used as a neutral fallback below the

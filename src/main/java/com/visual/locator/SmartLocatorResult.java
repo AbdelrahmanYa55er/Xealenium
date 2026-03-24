@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.locator;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -142,3 +142,5 @@ public class SmartLocatorResult {
         }
     }
 }
+
+

@@ -1,5 +1,6 @@
 package com.visual;
 
+import com.visual.semantic.SemanticSimilarity;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;

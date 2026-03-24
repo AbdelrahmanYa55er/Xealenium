@@ -1,4 +1,6 @@
-package com.visual;
+package com.visual.embedding;
+
+import com.visual.model.ElementSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -140,3 +142,5 @@ public final class EmbeddingFingerprintBuilder {
         return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
     }
 }
+
+

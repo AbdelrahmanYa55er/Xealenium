@@ -8,19 +8,21 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
     // Selenium (needed by visual engine + tests)
-    testImplementation 'org.seleniumhq.selenium:selenium-java:4.14.1'
+    implementation 'org.seleniumhq.selenium:selenium-java:4.14.1'
     // Healenium
-    testImplementation 'com.epam.healenium:healenium-web:3.4.5'
+    implementation 'com.epam.healenium:healenium-web:3.4.5'
     // SLF4J
-    testImplementation 'org.slf4j:slf4j-simple:2.0.9'
+    runtimeOnly 'org.slf4j:slf4j-simple:2.0.9'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.9'
     // Visual Engine - JSON baseline storage
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
-    testImplementation 'com.fasterxml.jackson.core:jackson-annotations:2.16.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.16.1'
     // Optional local embeddings
-    testImplementation 'com.microsoft.onnxruntime:onnxruntime:1.20.0'
-    testImplementation 'ai.djl.huggingface:tokenizers:0.35.1'
+    implementation 'com.microsoft.onnxruntime:onnxruntime:1.20.0'
+    implementation 'ai.djl.huggingface:tokenizers:0.35.1'
     // General lexical semantics without project-owned synonym dictionaries
-    testImplementation 'net.sf.extjwnl:extjwnl:2.0.5'
+    implementation 'net.sf.extjwnl:extjwnl:2.0.5'
+    runtimeOnly 'net.sf.extjwnl:extjwnl-data-wn31:1.2'
     testRuntimeOnly 'net.sf.extjwnl:extjwnl-data-wn31:1.2'
 }
 test {
@@ -30,7 +32,7 @@ test {
     systemProperty 'report', System.getProperty('report', 'true')
     systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', '')
     systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', 'false')
-    systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', '')
+    systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', 'true')
     systemProperty 'visual.embedding.modelDir', System.getProperty('visual.embedding.modelDir', '')
     systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', '')
     systemProperty 'visual.embedding.tokenizerFile', System.getProperty('visual.embedding.tokenizerFile', '')

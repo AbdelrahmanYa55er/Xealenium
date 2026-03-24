@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.report;
 
 public class ReportEntry {
     public final String originalLocator;

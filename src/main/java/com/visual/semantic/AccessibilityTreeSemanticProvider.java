@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.semantic;
 
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
@@ -107,3 +107,5 @@ public class AccessibilityTreeSemanticProvider implements SemanticProvider {
         return 0;
     }
 }
+
+

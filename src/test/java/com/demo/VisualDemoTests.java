@@ -1,7 +1,8 @@
 package com.demo;
+
 import com.epam.healenium.SelfHealingDriver;
-import com.visual.VisualDriver;
-import com.visual.VisualHealingEngine;
+import com.visual.driver.VisualDriver;
+import com.visual.engine.VisualHealingEngine;
 import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -37,13 +38,11 @@ public class VisualDemoTests {
         testUrl = System.getProperty("testUrl", "file:///c:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/pages/baseline.html");
     }
 
-    private void slow() throws Exception { Thread.sleep(600); }
+    private void slow() {}
 
     @Test
     public void testFullRegistrationFlow() throws Exception {
         driver.get(testUrl);
-        Thread.sleep(800);
-
         System.out.println("--- Starting form fill ---");
 
         WebElement fname = driver.findElement(By.id("fname"));
@@ -96,11 +95,12 @@ public class VisualDemoTests {
         assertNotNull(submitBtn);
 
         System.out.println("--- Form fill complete & submitted ---");
-        Thread.sleep(4000);
     }
 
     @AfterEach
-    public void tearDown() { if (driver != null) driver.quit(); }
+    public void tearDown() {
+        if (driver != null) driver.quit();
+    }
 
     @AfterAll
     public static void generateReport() {

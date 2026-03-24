@@ -10,7 +10,7 @@ $rootUrl = ($root -replace "\\", "/").TrimEnd("/")
 $baselineUrl = "file:///$rootUrl/pages/baseline.html"
 $updatedUrl = "file:///$rootUrl/pages/updated.html"
 $modelDir = Join-Path $root "models\gte-small-onnx"
-$embeddingArgs = @()
+$embeddingArgs = @("-Dvisual.embedding.enabled=true")
 if ((Test-Path (Join-Path $modelDir "model.onnx")) -and (Test-Path (Join-Path $modelDir "tokenizer.json"))) {
     $embeddingArgs = @(
         "-Dvisual.embedding.enabled=true",
@@ -19,10 +19,11 @@ if ((Test-Path (Join-Path $modelDir "model.onnx")) -and (Test-Path (Join-Path $m
     )
 }
 
-if ($embeddingArgs.Count -gt 0) {
-    Write-Host "Local embeddings detected: gte-small" -ForegroundColor Yellow
+Write-Host "Embeddings: requested" -ForegroundColor Yellow
+if ((Test-Path (Join-Path $modelDir "model.onnx")) -and (Test-Path (Join-Path $modelDir "tokenizer.json"))) {
+    Write-Host "Local model detected: gte-small" -ForegroundColor Yellow
 } else {
-    Write-Host "Local embeddings not detected. Running without embeddings." -ForegroundColor DarkYellow
+    Write-Host "Local model not detected. Runtime will log the fallback reason." -ForegroundColor DarkYellow
 }
 Write-Host ""
 

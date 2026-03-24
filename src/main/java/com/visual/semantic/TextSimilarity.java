@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.semantic;
 public final class TextSimilarity {
     private TextSimilarity(){}
     public static double score(String a,String b){

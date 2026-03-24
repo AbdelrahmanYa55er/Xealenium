@@ -1,4 +1,4 @@
-package com.visual;
+package com.visual.semantic;
 
 public class SemanticSignals {
     private final String accessibleName;
@@ -109,3 +109,5 @@ public class SemanticSignals {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 }
+
+

@@ -13,7 +13,7 @@ The project is no longer just a visual demo. It now includes:
 - human-in-the-loop confirmation
 - semantic signal extraction from DOM and Chromium accessibility data
 - smart locator generation from points or healed elements
-- optional local ONNX embeddings for open-world semantic matching
+- local ONNX embeddings for open-world semantic matching, enabled automatically when the default model folder exists
 - multiple page sets and recovery-mode tests
 
 ## Requirements
@@ -48,7 +48,7 @@ This does two steps:
 1. rebuilds the baseline from `pages/baseline.html`
 2. runs healing on `pages/updated.html`
 
-If a local model exists at `models\gte-small-onnx`, the runner now enables embeddings automatically. Otherwise it runs without embeddings.
+If a local model exists at `models\gte-small-onnx`, the runner enables embeddings automatically. Otherwise it runs without embeddings.
 
 ### Wizard runner
 
@@ -235,7 +235,7 @@ This reduces dependence on a handwritten synonym dictionary while still keeping 
 
 ## Local Embeddings
 
-Embeddings are optional and local-only.
+Embeddings are local-only and now default to on whenever the default model folder is available.
 
 Current verified setup:
 
@@ -262,9 +262,11 @@ Current verified setup:
 - text
 - aggregated semantic summary lines
 
-### Why embeddings are optional
+### Default behavior
 
-The framework still works without a model. That matters for portability and CI, and it lets you compare deterministic scoring against model-assisted scoring.
+- if `models\gte-small-onnx` exists, embeddings are enabled automatically
+- if the model folder is absent, the framework falls back to the non-embedding scorer
+- if you want to disable embeddings explicitly, use `-Dvisual.embedding.enabled=false`
 
 ### Launcher behavior
 
