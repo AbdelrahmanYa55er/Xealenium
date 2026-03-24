@@ -355,10 +355,50 @@ public final class BrowserSemanticScripts {
               });
               return values.slice(0, 18);
             }
+            function collectHeadingTexts() {
+              var values = [];
+              function pushText(text) {
+                var normalized = trim(text).replace(/\\s+/g, ' ');
+                if (!normalized) return;
+                if (values.indexOf(normalized) >= 0) return;
+                values.push(normalized);
+              }
+              document.querySelectorAll('h1, h2, h3, legend, .e-title, [data-section-title], [role="heading"]').forEach(function(node) {
+                pushText(textOf(node) || attr(node, 'data-section-title'));
+              });
+              return values.slice(0, 12);
+            }
+            function collectFormTexts() {
+              var values = [];
+              function pushText(text) {
+                var normalized = trim(text).replace(/\\s+/g, ' ');
+                if (!normalized) return;
+                if (values.indexOf(normalized) >= 0) return;
+                values.push(normalized);
+              }
+              document.querySelectorAll('label, input, textarea, select, [contenteditable="true"], [role="textbox"], [role="combobox"], [data-label]').forEach(function(node) {
+                if (node.matches('input, textarea, select, [contenteditable="true"], [role="textbox"], [role="combobox"]')) {
+                  pushText(primaryContextualLabelText(node) || primaryBasicLabelText(node));
+                  pushText(placeholderText(node));
+                  return;
+                }
+                pushText(textOf(node) || attr(node, 'data-label'));
+              });
+              return values.slice(0, 18);
+            }
+            function normalizedPath() {
+              var path = trim(window.location && window.location.pathname ? window.location.pathname : '');
+              return path.toLowerCase();
+            }
             var texts = collectPageIdentityTexts();
+            var headings = collectHeadingTexts();
+            var formTexts = collectFormTexts();
             return {
               pageTitle: trim(document.title || ''),
-              pageFingerprint: texts.join(' | ')
+              pageFingerprint: texts.join(' | '),
+              normalizedPath: normalizedPath(),
+              headingFingerprint: headings.join(' | '),
+              formFingerprint: formTexts.join(' | ')
             };
         """;
     }

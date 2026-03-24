@@ -1,6 +1,7 @@
 package com.visual.baseline;
 
 import com.visual.model.ElementSnapshot;
+import com.visual.model.PageIdentity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -43,9 +44,12 @@ public class BaselineStore {
         return indexOf(loadAll(), pageUrl, loc) >= 0;
     }
     public synchronized ElementSnapshot find(String pageUrl, String loc){
-        return find(pageUrl, "", "", loc);
+        return find(pageUrl, new PageIdentity("", ""), loc);
     }
     public synchronized ElementSnapshot find(String pageUrl, String pageTitle, String pageFingerprint, String loc){
+        return find(pageUrl, new PageIdentity(pageTitle, pageFingerprint), loc);
+    }
+    public synchronized ElementSnapshot find(String pageUrl, PageIdentity pageIdentity, String loc){
         List<ElementSnapshot> matches = loadAll().stream()
             .filter(s -> Objects.equals(s.locator, loc))
             .toList();
@@ -58,8 +62,9 @@ public class BaselineStore {
             }
         }
 
+        PageIdentity currentIdentity = pageIdentity == null ? new PageIdentity("", "") : pageIdentity;
         return matches.stream()
-            .max(Comparator.comparingDouble(s -> pageMatchScore(normalizedPageUrl, pageTitle, pageFingerprint, s)))
+            .max(Comparator.comparingDouble(s -> pageMatchScore(normalizedPageUrl, currentIdentity, s)))
             .orElse(null);
     }
     public int size(){return loadAll().size();}
@@ -95,22 +100,60 @@ public class BaselineStore {
         return score;
     }
 
-    private static double pageMatchScore(String normalizedPageUrl, String pageTitle, String pageFingerprint, ElementSnapshot snapshot){
+    private static double pageMatchScore(String normalizedPageUrl, PageIdentity currentIdentity, ElementSnapshot snapshot){
         double score = 0.0;
+        String snapshotForm = normalizeText(snapshot.formFingerprint);
+        String currentForm = normalizeText(currentIdentity.formFingerprint);
+        if (!currentForm.isBlank() && !snapshotForm.isBlank()) {
+            score += 900.0 * tokenSimilarity(currentForm, snapshotForm);
+        }
+
+        String snapshotHeading = normalizeText(snapshot.headingFingerprint);
+        String currentHeading = normalizeText(currentIdentity.headingFingerprint);
+        if (!currentHeading.isBlank() && !snapshotHeading.isBlank()) {
+            score += 550.0 * tokenSimilarity(currentHeading, snapshotHeading);
+        }
+
         String snapshotFingerprint = normalizeText(snapshot.pageFingerprint);
-        String currentFingerprint = normalizeText(pageFingerprint);
+        String currentFingerprint = normalizeText(currentIdentity.pageFingerprint);
         if (!currentFingerprint.isBlank() && !snapshotFingerprint.isBlank()) {
-            score += 1000.0 * tokenSimilarity(currentFingerprint, snapshotFingerprint);
+            score += 250.0 * tokenSimilarity(currentFingerprint, snapshotFingerprint);
         }
 
         String snapshotTitle = normalizeText(snapshot.pageTitle);
-        String currentTitle = normalizeText(pageTitle);
+        String currentTitle = normalizeText(currentIdentity.pageTitle);
         if (!currentTitle.isBlank() && !snapshotTitle.isBlank()) {
-            score += 250.0 * tokenSimilarity(currentTitle, snapshotTitle);
+            score += 150.0 * tokenSimilarity(currentTitle, snapshotTitle);
         }
 
-        score += urlSimilarity(normalizedPageUrl, normalizeUrl(snapshot.pageUrl));
+        String snapshotPath = normalizeText(snapshot.pagePath);
+        String currentPath = normalizeText(currentIdentity.normalizedPath);
+        if (!currentPath.isBlank() && !snapshotPath.isBlank()) {
+            score += 120.0 * tokenSimilarity(currentPath, snapshotPath);
+        }
+
+        if (!hasStructuredIdentity(snapshot) || !hasStructuredIdentity(currentIdentity)) {
+            score += urlSimilarity(normalizedPageUrl, normalizeUrl(snapshot.pageUrl));
+        } else {
+            score += 0.15 * urlSimilarity(normalizedPageUrl, normalizeUrl(snapshot.pageUrl));
+        }
         return score;
+    }
+
+    private static boolean hasStructuredIdentity(ElementSnapshot snapshot) {
+        return snapshot != null && (
+            !normalizeText(snapshot.formFingerprint).isBlank()
+            || !normalizeText(snapshot.headingFingerprint).isBlank()
+            || !normalizeText(snapshot.pagePath).isBlank()
+        );
+    }
+
+    private static boolean hasStructuredIdentity(PageIdentity pageIdentity) {
+        return pageIdentity != null && (
+            !normalizeText(pageIdentity.formFingerprint).isBlank()
+            || !normalizeText(pageIdentity.headingFingerprint).isBlank()
+            || !normalizeText(pageIdentity.normalizedPath).isBlank()
+        );
     }
 
     private static double tokenSimilarity(String left, String right){

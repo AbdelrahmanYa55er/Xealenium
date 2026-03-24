@@ -11,15 +11,18 @@ import java.util.Map;
 public class PageIdentityService {
     public PageIdentity capture(WebDriver driver) {
         if (!(driver instanceof JavascriptExecutor js)) {
-            return new PageIdentity("", "");
+            return new PageIdentity("", "", "", "", "");
         }
         Object raw = js.executeScript(BrowserSemanticScripts.pageIdentityScript());
         if (!(raw instanceof Map<?, ?> map)) {
-            return new PageIdentity(safeTitle(driver), "");
+            return new PageIdentity(safeTitle(driver), "", "", "", "");
         }
         return new PageIdentity(
             stringValue(map.get("pageTitle"), safeTitle(driver)),
-            stringValue(map.get("pageFingerprint"), "")
+            stringValue(map.get("pageFingerprint"), ""),
+            stringValue(map.get("normalizedPath"), ""),
+            stringValue(map.get("headingFingerprint"), ""),
+            stringValue(map.get("formFingerprint"), "")
         );
     }
 

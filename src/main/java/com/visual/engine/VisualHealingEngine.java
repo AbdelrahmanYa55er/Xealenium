@@ -93,7 +93,7 @@ public class VisualHealingEngine {
     public ScoreResult heal(WebDriver d, By loc){
         String key=loc.toString();
         PageIdentity pageIdentity = pageIdentityService.capture(d);
-        ElementSnapshot base=store.find(d.getCurrentUrl(), pageIdentity.pageTitle, pageIdentity.pageFingerprint, key);
+        ElementSnapshot base=store.find(d.getCurrentUrl(), pageIdentity, key);
         if(base==null){System.out.println("[VISUAL-HEAL] No baseline: "+key);return ScoreResult.aborted(0.0,0);}
         try{
             BufferedImage pageImg=ImageUtils.screenshotPage(d);

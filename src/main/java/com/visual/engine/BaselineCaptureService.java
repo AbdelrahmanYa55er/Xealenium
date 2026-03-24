@@ -67,7 +67,7 @@ final class BaselineCaptureService {
                     signals.getParentContext(),
                     signals.getInputType()
                 )
-                .withPageIdentity(pageIdentity.pageTitle, pageIdentity.pageFingerprint);
+                .withPageIdentity(pageIdentity);
 
             String fingerprint = EmbeddingFingerprintBuilder.forSnapshot(locator.toString(), snapshot);
             float[] embeddingVector = embeddingService.embed(fingerprint);
