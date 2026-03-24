@@ -1,20 +1,55 @@
 # Xealenium
 
-Xealenium is an experimental Selenium self-healing framework that layers:
+Xealenium is a Selenium recovery framework for cases where the DOM changed too much for a classic selector-healing approach to stay reliable.
+
+It layers three recovery modes:
 
 1. Native Selenium lookup
 2. Healenium recovery
 3. Visual recovery with semantic reranking and smart locator generation
 
-The project is no longer just a visual demo. It now includes:
+## What It Does
 
-- protected page-scoped baselines
-- full-page heatmaps
-- human-in-the-loop confirmation
-- semantic signal extraction from DOM and Chromium accessibility data
-- smart locator generation from points or healed elements
-- local ONNX embeddings for open-world semantic matching, enabled automatically when the default model folder exists
-- multiple page sets and recovery-mode tests
+Xealenium is no longer just a demo wrapper around screenshots. The current framework includes:
+
+- page-scoped baseline storage
+- stitched full-page heatmaps
+- smart locator generation from healed elements or screen coordinates
+- shared semantic extraction from DOM plus Chromium accessibility data
+- optional local ONNX embeddings for open-world semantic matching
+- human-in-the-loop review strategies
+- benchmark suites that separate direct success, Healenium recovery, Xealenium-only recovery, and refusal behavior
+
+## Current Scope
+
+Xealenium is strongest today on form-like workflows:
+
+- text inputs
+- contenteditable fields
+- checkboxes and toggle-like widgets
+- selects and select-like wrappers
+- action buttons and submit links
+
+That is the most mature domain in the repo right now. It can work outside forms, but the benchmark and semantic assumptions are still most proven on forms and registration/profile-style pages.
+
+## Why This Is Not Just Healenium
+
+Healenium is best when the original locator shape is still mostly meaningful and the DOM drift is moderate.
+
+Xealenium is the next layer for the harder cases where:
+
+- ids disappeared
+- tags changed
+- wrappers changed heavily
+- field order moved
+- contenteditable widgets replaced inputs
+- semantic meaning survived, but the old selector contract did not
+
+In that phase, Xealenium stops trying to imitate the old selector and instead:
+
+1. matches the baseline element against live candidates visually and semantically
+2. chooses the best candidate above threshold
+3. generates a new maintainable locator for that healed element
 
 ## Requirements
 
@@ -22,18 +57,37 @@ The project is no longer just a visual demo. It now includes:
 - Chrome installed
 - Windows PowerShell or `cmd` for the helper scripts
 
+## Repository Layout
+
+Framework code now lives in `src/main/java` and is split by responsibility:
+
+- `com.visual.driver`
+- `com.visual.engine`
+- `com.visual.semantic`
+- `com.visual.locator`
+- `com.visual.baseline`
+- `com.visual.embedding`
+- `com.visual.report`
+- `com.visual.image`
+- `com.visual.model`
+- `com.visual.config`
+
+Benchmarks and demos live under `src/test/java`.
+
 ## Page Sets
 
-Current demo assets in [`pages`](pages):
+Current HTML assets in [`pages`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/pages):
 
 - `baseline.html` / `updated.html`
-  - the original baseline vs changed DOM pair
+  - original hard-drift pair
+- `baseline.html` / `updated_variant.html`
+  - reordered and relabeled stress pair
 - `baseline_hybrid.html` / `updated_hybrid.html`
-  - mixed recovery-mode pair where some fields still work directly, some need Healenium, and some need visual healing
-- `updated_variant.html`
-  - reordered and structurally changed page for tougher semantic testing
+  - mixed recovery-mode pair
+- `baseline_refusal.html` / `updated_refusal.html`
+  - refusal pair where no comparable control remains
 - `semantic_signals.html`
-  - fixture page for semantic extraction and smart-locator tests
+  - focused semantic extraction and locator fixture
 
 ## Quick Start
 
@@ -43,12 +97,12 @@ Current demo assets in [`pages`](pages):
 .\run.bat
 ```
 
-This does two steps:
+This:
 
 1. rebuilds the baseline from `pages/baseline.html`
 2. runs healing on `pages/updated.html`
 
-If a local model exists at `models\gte-small-onnx`, the runner enables embeddings automatically. Otherwise it runs without embeddings.
+If a local model exists at `models\gte-small-onnx`, the launcher enables embeddings automatically.
 
 ### Wizard runner
 
@@ -68,52 +122,83 @@ The wizard prompts for:
 - report generation
 - baseline rebuild
 
-It also auto-detects the local embedding model if present.
+### Local model bootstrap
 
-### Model bootstrap
-
-The repo does not commit the ONNX model itself. Instead, download it locally into `models\gte-small-onnx`:
+The repo intentionally does not commit ONNX model binaries. Download the default local model into `models\gte-small-onnx` with:
 
 ```powershell
 .\scripts\download-model.ps1
 ```
 
-Model setup details are documented in [`models/README.md`](models/README.md).
+Details are in [`models/README.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/models/README.md).
 
-## Useful Test Commands
+## Public API
 
-### Core demo flow
+The intended adoption surface is small:
 
-```powershell
-.\gradlew.bat --no-daemon test --tests "com.demo.VisualDemoTests"
+- [`VisualDriver.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/driver/VisualDriver.java)
+- [`VisualHealingEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/VisualHealingEngine.java)
+- [`VisualHealingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/VisualHealingConfig.java)
+- [`EmbeddingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/EmbeddingConfig.java)
+
+Example:
+
+```java
+ChromeDriver chrome = new ChromeDriver();
+WebDriver healenium = SelfHealingDriver.create(chrome);
+
+VisualHealingConfig config = VisualHealingConfig.builder()
+    .interactiveReview(false)
+    .refreshBaseline(false)
+    .embeddingConfig(EmbeddingConfig.fromSystemProperties())
+    .build();
+
+VisualDriver driver = new VisualDriver(healenium, chrome, config);
 ```
 
-### Multi-page semantic matrix
+Compatibility note:
 
-```powershell
-.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.VisualPageMatrixTests"
+- system properties still work
+- config objects are now the preferred runtime API
+- benchmark tests now use explicit engine setters for mid-run baseline transitions instead of mutating JVM properties
+
+### Library-style adoption
+
+```java
+ChromeDriver chrome = new ChromeDriver();
+WebDriver healenium = SelfHealingDriver.create(chrome);
+
+EmbeddingConfig embedding = EmbeddingConfig.builder()
+    .enabled(true)
+    .modelDir(Path.of("models", "gte-small-onnx"))
+    .modelName("gte-small")
+    .build();
+
+VisualHealingConfig healing = VisualHealingConfig.builder()
+    .interactiveReview(false)
+    .refreshBaseline(false)
+    .embeddingConfig(embedding)
+    .build();
+
+VisualDriver driver = new VisualDriver(healenium, chrome, healing);
+WebElement city = driver.findElement(By.id("city"));
 ```
 
-### Hybrid recovery-mode suite
+### Benchmark-style baseline then healing
 
-```powershell
-.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.HybridRecoveryModeTests"
-```
+```java
+VisualDriver driver = new VisualDriver(healenium, chrome, VisualHealingConfig.fromSystemProperties());
 
-### Interactive run
+driver.getEngine().setCaptureBaseline(true);
+driver.getEngine().setRefreshBaseline(true);
+driver.get(pageUrl("baseline.html"));
+driver.findElement(By.id("fname"));
+driver.findElement(By.id("lname"));
 
-```powershell
-.\gradlew.bat --no-daemon "-Dinteractive=true" "-Dreport=true" test --tests "com.demo.VisualDemoTests"
-```
-
-### Embedding-enabled run
-
-```powershell
-.\gradlew.bat --no-daemon `
-  "-Dvisual.embedding.enabled=true" `
-  "-Dvisual.embedding.modelDir=C:/PATH_TO_MODEL_DIR" `
-  "-Dvisual.embedding.modelName=gte-small" `
-  --rerun-tasks test --tests "com.demo.VisualPageMatrixTests"
+driver.getEngine().setCaptureBaseline(false);
+driver.getEngine().setRefreshBaseline(false);
+driver.get(pageUrl("updated.html"));
+WebElement healed = driver.findElement(By.id("fname"));
 ```
 
 ## Recovery Pipeline
@@ -126,116 +211,93 @@ Each snapshot includes:
 
 - locator
 - page URL
+- page identity metadata
 - full-page coordinates
 - element image
 - visible text
-- element kind
 - accessible name
 - semantic role
 - autocomplete
 - semantic fingerprint
 - optional embedding vector
 
-Existing baseline entries are protected from accidental overwrite unless refresh is explicitly enabled.
-
 ### 2. Recovery order
 
-When a locator fails during a test:
+When a lookup fails:
 
 1. Selenium tries first
 2. Healenium tries second
-3. `VisualHealingEngine` runs third
-
-That third phase is the “hard drift” path, where the DOM contract is assumed to have changed enough that the old selector shape is no longer worth preserving.
+3. Xealenium visual healing runs third
 
 ### 3. Visual healing
 
-The visual engine:
+The engine:
 
-1. collects candidate controls from the current page
-2. compares them against the baseline snapshot
-3. scores them with visual, positional, textual, structural, and semantic features
-4. chooses the best candidate above threshold
-5. generates a new robust locator with `SmartLocatorBuilder`
-6. records the heal in the report and heatmap artifacts
+1. loads the baseline snapshot
+2. collects candidate controls from the current page
+3. enriches them with semantic metadata
+4. scores them with visual, positional, semantic, field, and embedding features
+5. makes a healing decision through a review strategy
+6. generates a robust locator for the selected candidate
+7. records heatmap and report artifacts
 
 ## Semantic Stack
 
-Xealenium now uses shared semantic extraction instead of separate ad-hoc heuristics in different classes.
+Xealenium now uses one shared semantic pipeline instead of multiple drifting heuristics.
 
-### Semantic providers
+Core classes:
 
-- `DomSemanticProvider`
-  - extracts accessible-name-like signals, role heuristics, labels, placeholder, description text, section context, and parent context from the DOM
-- `AccessibilityTreeSemanticProvider`
-  - attempts to read Chromium accessibility semantics via CDP
-- `SemanticSignalExtractor`
-  - merges both and prefers stronger AX values when available
+- [`DomSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/DomSemanticProvider.java)
+- [`AccessibilityTreeSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/AccessibilityTreeSemanticProvider.java)
+- [`SemanticSignalExtractor.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/SemanticSignalExtractor.java)
 
-### Current semantic signals
+Current signals:
 
 - accessible name
 - semantic role
 - `autocomplete`
 - label text
-- placeholder / `data-placeholder`
+- placeholder
 - description text
 - section context
 - parent context
 - input type
 
-### Lexical and semantic matching
-
-Current non-embedding matching uses:
-
-- normalized text similarity
-- field-level semantic comparison
-- WordNet-backed lexical similarity in `WordNetSemanticService`
-
-This reduces dependence on a handwritten synonym dictionary while still keeping the system deterministic when embeddings are off.
+Lexical matching is backed by [`SemanticSimilarity.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/SemanticSimilarity.java) and [`WordNetSemanticService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/WordNetSemanticService.java).
 
 ## Smart Locator Builder
 
-`SmartLocatorBuilder` turns a screen point or healed `WebElement` into a stable Selenium locator.
+[`SmartLocatorBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/locator/SmartLocatorBuilder.java) converts either a healed `WebElement` or a screen point into a stable Selenium locator.
 
-### Input
+Main steps:
 
-- `buildLocatorFromPoint(int x, int y)`
-- direct element-based generation for already-healed candidates
+1. detect or normalize the target element
+2. extract semantic and structural attributes
+3. generate locator candidates
+4. reject fragile or non-unique selectors
+5. rank accepted candidates
+6. return the best locator plus fallback candidates and logs
 
-### Flow
-
-1. detect the element
-2. normalize wrappers, icons, and decorative children to a meaningful control
-3. extract semantic attributes and nearby context
-4. generate locator candidates
-5. validate uniqueness and exact identity
-6. rank accepted candidates
-7. return the best locator plus fallbacks and debug logs
-
-### Candidate strategies
+Supported strategies include:
 
 - `data-testid` / `data-test`
 - stable `id`
 - `name`
 - `aria-label`
-- placeholder and contenteditable placeholder
+- placeholder-based selectors
 - label-based XPath
-- class + attribute combinations
-- class + text XPath for meaningful clickable elements
-- limited ancestor + attribute combinations
+- class plus attribute combinations
+- class plus text XPath for meaningful clickable controls
 
-### Rejection rules
+Strictly avoided unless no better option exists:
 
-- no absolute XPath
-- no non-unique selectors
-- no wrong-element selectors
-- no obviously dynamic ids
-- no layout-heavy DOM chains unless there is no better option
+- absolute XPath
+- layout-heavy chains
+- non-unique selectors
 
 ## Local Embeddings
 
-Embeddings are local-only and now default to on whenever the default model folder is available.
+Embeddings are local-only and enabled by default when the local model folder is available.
 
 Current verified setup:
 
@@ -243,108 +305,82 @@ Current verified setup:
 - runtime: ONNX Runtime Java
 - tokenizer: DJL Hugging Face tokenizers
 
-### Fingerprints
+Core classes:
 
-`EmbeddingFingerprintBuilder` creates a multi-line semantic fingerprint from:
+- [`EmbeddingFingerprintBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/EmbeddingFingerprintBuilder.java)
+- [`LocalEmbeddingService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/LocalEmbeddingService.java)
 
-- locator tokens
-- element kind
-- tag
-- role
-- input type
-- accessible name
-- label
-- placeholder
-- description
-- autocomplete
-- section context
-- parent context
-- text
-- aggregated semantic summary lines
+If the model is missing, Xealenium falls back to the deterministic scorer.
 
-### Default behavior
+## Human Review
 
-- if `models\gte-small-onnx` exists, embeddings are enabled automatically
-- if the model folder is absent, the framework falls back to the non-embedding scorer
-- if you want to disable embeddings explicitly, use `-Dvisual.embedding.enabled=false`
+Review is now strategy-based rather than hardwired into the engine.
 
-### Launcher behavior
+Implementations:
 
-The helper scripts now auto-enable embeddings when both of these files exist:
+- [`ThresholdOnlyReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/ThresholdOnlyReviewStrategy.java)
+- [`AutoAcceptReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/AutoAcceptReviewStrategy.java)
+- [`SwingReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/SwingReviewStrategy.java)
 
-- `models\gte-small-onnx\model.onnx`
-- `models\gte-small-onnx\tokenizer.json`
+With `interactive=true`, Swing review shows:
 
-The `models` folder is intentionally ignored by git so local model artifacts are never pushed by mistake.
-
-## Human In The Loop
-
-With `-Dinteractive=true`, each visual heal opens a confirmation dialog that shows:
-
-- the failed locator
+- failed locator
 - candidate score
-- the generated smart locator
-- the full-page heatmap
-
-Available actions:
-
-- `Confirm`
-- `Try Next Best`
-- `Refuse (Abort)`
-
-The dialog now requires explicit confirmation and no longer auto-accepts by default.
-
-## Heatmaps
-
-Heatmaps are built from stitched full-page screenshots.
-
-Important implementation detail:
-
-- candidate boxes are stored in page coordinates, not viewport coordinates
-
-That keeps lower-page overlays aligned after scrolling and fixed the earlier drift that appeared once screenshots became taller.
+- smart locator
+- full-page heatmap
 
 ## Output Files
+
+Generated locally:
 
 - `visual-baseline.json`
 - `visual-heatmap-*.png`
 - `visual-healing-report.html`
 
-These artifacts are kept out of git and regenerated locally.
+These are not part of the committed source.
 
-## Key Tests
+## Benchmark Suites
 
-- `com.demo.VisualDemoTests`
-  - baseline and updated demo flow
-- `com.demo.VisualPageMatrixTests`
-  - baseline vs multiple updated pages
-- `com.demo.HybridRecoveryModeTests`
-  - direct vs Healenium vs visual-healing coverage on one page pair
-- `com.visual.SmartLocatorBuilderTest`
-  - locator generation and selector quality checks
-- `com.visual.SemanticSimilarityTest`
-  - semantic and lexical scoring checks
-- `com.visual.EmbeddingFingerprintBuilderTest`
-  - fingerprint construction checks
-- `com.visual.LocalEmbeddingServiceTest`
-  - local embedding service checks
+Main benchmark entry points:
 
-## Key Classes
+- `com.demo.benchmark.VisualPageMatrixTests`
+- `com.demo.benchmark.HybridRecoveryModeTests`
+- `com.demo.benchmark.RefusalBenchmarkTests`
 
-- `com.visual.VisualDriver`
-  - wrapper that routes Selenium failures into the visual engine
-- `com.visual.VisualHealingEngine`
-  - scoring, candidate ranking, heatmaps, interactive confirmation, and report generation
-- `com.visual.SmartLocatorBuilder`
-  - semantic locator generation from points or elements
-- `com.visual.SemanticSignalExtractor`
-  - shared semantic extraction orchestrator
-- `com.visual.LocalEmbeddingService`
-  - optional ONNX embedding runtime
-- `com.visual.BaselineStore`
-  - page-scoped baseline persistence
+These prove:
+
+- direct Selenium success
+- Healenium recovery on soft drift
+- Xealenium-only recovery on hard drift
+- Xealenium refusal when confidence is too low
+
+If you want the benchmark-style setup pattern, see:
+
+- [`VisualPageMatrixTests.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/test/java/com/demo/benchmark/VisualPageMatrixTests.java)
+- [`HybridRecoveryModeTests.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/test/java/com/demo/benchmark/HybridRecoveryModeTests.java)
+
+## Recommended Commands
+
+```powershell
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.benchmark.VisualPageMatrixTests"
+```
+
+```powershell
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.benchmark.HybridRecoveryModeTests"
+```
+
+```powershell
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.benchmark.RefusalBenchmarkTests"
+```
+
+## Limitations
+
+- strongest current benchmark coverage is forms
+- currently optimized around Chrome and Chromium-based AX extraction
+- some custom widgets still rely on heuristics rather than widget-specific adapters
+- the repo still carries non-blocking Healenium init-report warnings and Selenium CDP warnings on Chrome 146
 
 ## More Documentation
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- [`docs/TEST_MATRIX.md`](docs/TEST_MATRIX.md)
+- [`docs/ARCHITECTURE.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/ARCHITECTURE.md)
+- [`docs/TEST_MATRIX.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/TEST_MATRIX.md)

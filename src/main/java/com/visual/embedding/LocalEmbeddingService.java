@@ -1,5 +1,6 @@
 package com.visual.embedding;
 
+import com.visual.config.EmbeddingConfig;
 import com.visual.model.ElementSnapshot;
 
 import ai.djl.huggingface.tokenizers.Encoding;
@@ -16,15 +17,18 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LocalEmbeddingService {
     private static final String LOG_PREFIX = "[EMBEDDING]";
     private static volatile LocalEmbeddingService instance;
+    private static final Map<EmbeddingConfig, LocalEmbeddingService> INSTANCES = new ConcurrentHashMap<>();
 
     private final boolean enabled;
     private final String modelName;
     private final String disabledReason;
     private final OnnxTextEmbeddingModel model;
+    private final EmbeddingConfig config;
 
     public static LocalEmbeddingService getInstance() {
         LocalEmbeddingService current = instance;
@@ -33,10 +37,18 @@ public class LocalEmbeddingService {
         }
         synchronized (LocalEmbeddingService.class) {
             if (instance == null) {
-                instance = new LocalEmbeddingService();
+                instance = new LocalEmbeddingService(EmbeddingConfig.fromSystemProperties());
             }
             return instance;
         }
+    }
+
+    public static LocalEmbeddingService getInstance(EmbeddingConfig config) {
+        EmbeddingConfig resolved = config == null ? EmbeddingConfig.fromSystemProperties() : config;
+        if (resolved.equals(EmbeddingConfig.fromSystemProperties())) {
+            return getInstance();
+        }
+        return INSTANCES.computeIfAbsent(resolved, LocalEmbeddingService::new);
     }
 
     static void resetForTests() {
@@ -46,15 +58,21 @@ public class LocalEmbeddingService {
             }
             instance = null;
         }
+        INSTANCES.values().forEach(service -> {
+            if (service.model != null) {
+                service.model.closeQuietly();
+            }
+        });
+        INSTANCES.clear();
     }
 
-    private LocalEmbeddingService() {
-        String explicit = System.getProperty("visual.embedding.enabled", "").trim();
+    private LocalEmbeddingService(EmbeddingConfig config) {
+        this.config = config == null ? EmbeddingConfig.fromSystemProperties() : config;
         boolean resolvedEnabled;
         String resolvedModelName;
         String resolvedDisabledReason;
         OnnxTextEmbeddingModel resolvedModel;
-        if ("false".equalsIgnoreCase(explicit)) {
+        if (!this.config.isEnabled()) {
             resolvedEnabled = false;
             resolvedModelName = "";
             resolvedDisabledReason = "disabled-by-property";
@@ -69,13 +87,13 @@ public class LocalEmbeddingService {
                 resolvedModel = null;
             } else {
                 try {
-                    int maxLength = Integer.parseInt(System.getProperty("visual.embedding.maxLength", "128"));
-                    String configuredName = System.getProperty("visual.embedding.modelName", "").trim();
+                    int maxLength = Math.max(16, this.config.getMaxLength());
+                    String configuredName = this.config.getModelName();
                     resolvedModelName = configuredName.isBlank()
                         ? modelFile.getParent().getFileName().toString()
                         : configuredName;
                     String pooling = resolvePoolingStrategy(resolvedModelName, modelFile);
-                    resolvedModel = new OnnxTextEmbeddingModel(resolvedModelName, modelFile, tokenizerFile, Math.max(16, maxLength), pooling);
+                    resolvedModel = new OnnxTextEmbeddingModel(resolvedModelName, modelFile, tokenizerFile, maxLength, pooling);
                     resolvedEnabled = true;
                     resolvedDisabledReason = "";
                     System.out.println(LOG_PREFIX + " Loaded local model '" + resolvedModelName + "' from " + modelFile + " pooling=" + pooling);
@@ -104,6 +122,10 @@ public class LocalEmbeddingService {
 
     public String getDisabledReason() {
         return disabledReason;
+    }
+
+    public EmbeddingConfig getConfig() {
+        return config;
     }
 
     public float[] embed(String fingerprint) {
@@ -151,13 +173,14 @@ public class LocalEmbeddingService {
         return dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
     }
 
-    private static Path resolveModelFile() {
-        String explicitFile = System.getProperty("visual.embedding.modelFile", "").trim();
-        if (!explicitFile.isBlank()) {
-            Path path = Path.of(explicitFile);
+    private Path resolveModelFile() {
+        Path configuredFile = config.getModelFile();
+        if (configuredFile != null) {
+            Path path = configuredFile.toAbsolutePath();
             return Files.exists(path) ? path : null;
         }
-        String modelDir = System.getProperty("visual.embedding.modelDir", "").trim();
+        Path configuredDir = config.getModelDir();
+        String modelDir = configuredDir == null ? "" : configuredDir.toString().trim();
         if (modelDir.isBlank()) {
             Path defaultDir = Path.of("models", "gte-small-onnx").toAbsolutePath();
             if (Files.isDirectory(defaultDir)) {
@@ -185,10 +208,10 @@ public class LocalEmbeddingService {
         }
     }
 
-    private static Path resolveTokenizerFile(Path modelFile) {
-        String explicitFile = System.getProperty("visual.embedding.tokenizerFile", "").trim();
-        if (!explicitFile.isBlank()) {
-            Path path = Path.of(explicitFile);
+    private Path resolveTokenizerFile(Path modelFile) {
+        Path configuredFile = config.getTokenizerFile();
+        if (configuredFile != null) {
+            Path path = configuredFile.toAbsolutePath();
             return Files.exists(path) ? path : null;
         }
         if (modelFile == null || modelFile.getParent() == null) {
@@ -198,8 +221,8 @@ public class LocalEmbeddingService {
         return Files.exists(tokenizer) ? tokenizer : null;
     }
 
-    private static String resolvePoolingStrategy(String modelName, Path modelFile) {
-        String explicit = System.getProperty("visual.embedding.pooling", "").trim().toLowerCase(Locale.ROOT);
+    private String resolvePoolingStrategy(String modelName, Path modelFile) {
+        String explicit = config.getPooling();
         if (!explicit.isBlank()) {
             return explicit;
         }

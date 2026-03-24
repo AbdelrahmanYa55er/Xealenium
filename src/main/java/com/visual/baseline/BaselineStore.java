@@ -43,6 +43,9 @@ public class BaselineStore {
         return indexOf(loadAll(), pageUrl, loc) >= 0;
     }
     public synchronized ElementSnapshot find(String pageUrl, String loc){
+        return find(pageUrl, "", "", loc);
+    }
+    public synchronized ElementSnapshot find(String pageUrl, String pageTitle, String pageFingerprint, String loc){
         List<ElementSnapshot> matches = loadAll().stream()
             .filter(s -> Objects.equals(s.locator, loc))
             .toList();
@@ -56,7 +59,7 @@ public class BaselineStore {
         }
 
         return matches.stream()
-            .max(Comparator.comparingInt(s -> urlSimilarity(normalizedPageUrl, normalizeUrl(s.pageUrl))))
+            .max(Comparator.comparingDouble(s -> pageMatchScore(normalizedPageUrl, pageTitle, pageFingerprint, s)))
             .orElse(null);
     }
     public int size(){return loadAll().size();}
@@ -90,6 +93,52 @@ public class BaselineStore {
             score++;
         }
         return score;
+    }
+
+    private static double pageMatchScore(String normalizedPageUrl, String pageTitle, String pageFingerprint, ElementSnapshot snapshot){
+        double score = 0.0;
+        String snapshotFingerprint = normalizeText(snapshot.pageFingerprint);
+        String currentFingerprint = normalizeText(pageFingerprint);
+        if (!currentFingerprint.isBlank() && !snapshotFingerprint.isBlank()) {
+            score += 1000.0 * tokenSimilarity(currentFingerprint, snapshotFingerprint);
+        }
+
+        String snapshotTitle = normalizeText(snapshot.pageTitle);
+        String currentTitle = normalizeText(pageTitle);
+        if (!currentTitle.isBlank() && !snapshotTitle.isBlank()) {
+            score += 250.0 * tokenSimilarity(currentTitle, snapshotTitle);
+        }
+
+        score += urlSimilarity(normalizedPageUrl, normalizeUrl(snapshot.pageUrl));
+        return score;
+    }
+
+    private static double tokenSimilarity(String left, String right){
+        Set<String> leftTokens = tokens(left);
+        Set<String> rightTokens = tokens(right);
+        if (leftTokens.isEmpty() || rightTokens.isEmpty()) {
+            return 0.0;
+        }
+        Set<String> intersection = new HashSet<>(leftTokens);
+        intersection.retainAll(rightTokens);
+        Set<String> union = new HashSet<>(leftTokens);
+        union.addAll(rightTokens);
+        return union.isEmpty() ? 0.0 : ((double) intersection.size() / union.size());
+    }
+
+    private static Set<String> tokens(String value){
+        String normalized = normalizeText(value);
+        if (normalized.isBlank()) {
+            return Set.of();
+        }
+        return new LinkedHashSet<>(Arrays.asList(normalized.split("\\s+")));
+    }
+
+    private static String normalizeText(String value){
+        if (value == null) {
+            return "";
+        }
+        return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", " ").trim();
     }
 
     private static boolean isBlank(String value){

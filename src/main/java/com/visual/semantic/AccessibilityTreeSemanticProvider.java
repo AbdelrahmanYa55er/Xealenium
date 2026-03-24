@@ -1,5 +1,7 @@
 package com.visual.semantic;
 
+import com.visual.model.AxNodeMetadata;
+
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -13,7 +15,6 @@ public class AccessibilityTreeSemanticProvider implements SemanticProvider {
     private static final String PROBE_ATTRIBUTE = "data-visual-ax-probe";
 
     @Override
-    @SuppressWarnings("unchecked")
     public SemanticSignals extract(WebDriver driver, WebElement element) {
         if (!(driver instanceof JavascriptExecutor js) || element == null) {
             return SemanticSignals.empty("ax-unavailable");
@@ -28,31 +29,23 @@ public class AccessibilityTreeSemanticProvider implements SemanticProvider {
         try {
             js.executeScript("arguments[0].setAttribute(arguments[1], arguments[2]);", element, PROBE_ATTRIBUTE, probe);
 
-            Map<String, Object> document = executeCdp(driver, cdpMethod, "DOM.getDocument", Map.of());
-            int rootNodeId = nestedInt(document, "root", "nodeId");
+            int rootNodeId = nestedInt(executeCdp(driver, cdpMethod, "DOM.getDocument", Map.of()), "root", "nodeId");
             if (rootNodeId <= 0) {
                 return SemanticSignals.empty("ax");
             }
 
-            Map<String, Object> query = executeCdp(driver, cdpMethod, "DOM.querySelector",
-                Map.of("nodeId", rootNodeId, "selector", "[" + PROBE_ATTRIBUTE + "=\"" + probe + "\"]"));
-            int nodeId = toInt(query.get("nodeId"));
+            int nodeId = toInt(executeCdp(driver, cdpMethod, "DOM.querySelector",
+                Map.of("nodeId", rootNodeId, "selector", "[" + PROBE_ATTRIBUTE + "=\"" + probe + "\"]")).get("nodeId"));
             if (nodeId <= 0) {
                 return SemanticSignals.empty("ax");
             }
 
-            Map<String, Object> partialTree = executeCdp(driver, cdpMethod, "Accessibility.getPartialAXTree",
-                Map.of("nodeId", nodeId, "fetchRelatives", false));
-            List<Map<String, Object>> nodes = (List<Map<String, Object>>) partialTree.get("nodes");
-            if (nodes == null || nodes.isEmpty()) {
+            AxNodeMetadata metadata = firstAxNodeMetadata(executeCdp(driver, cdpMethod, "Accessibility.getPartialAXTree",
+                Map.of("nodeId", nodeId, "fetchRelatives", false)));
+            if (metadata == null) {
                 return SemanticSignals.empty("ax");
             }
-
-            Map<String, Object> node = nodes.get(0);
-            String accessibleName = propertyValue(node.get("name"));
-            String role = propertyValue(node.get("role")).toLowerCase();
-
-            return new SemanticSignals(accessibleName, role, "", "ax");
+            return new SemanticSignals(metadata.accessibleName, metadata.role, "", "ax");
         } catch (Exception ignored) {
             return SemanticSignals.empty("ax-failed");
         } finally {
@@ -71,23 +64,38 @@ public class AccessibilityTreeSemanticProvider implements SemanticProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> executeCdp(WebDriver driver, Method method, String command, Map<String, Object> params) throws Exception {
+    private static Map<?, ?> executeCdp(WebDriver driver, Method method, String command, Map<String, ?> params) throws Exception {
         Object result = method.invoke(driver, command, params);
-        return result instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+        return result instanceof Map<?, ?> map ? map : Map.of();
     }
 
-    @SuppressWarnings("unchecked")
-    private static int nestedInt(Map<String, Object> payload, String parentKey, String childKey) {
+    private static AxNodeMetadata firstAxNodeMetadata(Map<?, ?> partialTree) {
+        Object nodesRaw = partialTree.get("nodes");
+        if (!(nodesRaw instanceof List<?> nodes) || nodes.isEmpty()) {
+            return null;
+        }
+        if (!(nodes.get(0) instanceof Map<?, ?> node)) {
+            return null;
+        }
+        return toAxNodeMetadata(node);
+    }
+
+    private static AxNodeMetadata toAxNodeMetadata(Map<?, ?> node) {
+        return new AxNodeMetadata(
+            propertyValue(node.get("name")),
+            propertyValue(node.get("role")).toLowerCase()
+        );
+    }
+
+    private static int nestedInt(Map<?, ?> payload, String parentKey, String childKey) {
         Object parent = payload.get(parentKey);
         if (!(parent instanceof Map<?, ?> map)) return 0;
-        return toInt(((Map<String, Object>) map).get(childKey));
+        return toInt(map.get(childKey));
     }
 
-    @SuppressWarnings("unchecked")
     private static String propertyValue(Object value) {
         if (value instanceof Map<?, ?> map) {
-            Object inner = ((Map<String, Object>) map).get("value");
+            Object inner = map.get("value");
             return inner == null ? "" : String.valueOf(inner);
         }
         return value == null ? "" : String.valueOf(value);

@@ -1,124 +1,122 @@
 # Test Matrix
 
-## Page Assets
+## Benchmark Assets
 
-### `baseline.html`
+- `baseline.html` -> `updated.html`
+  - original hard-drift benchmark
+- `baseline.html` -> `updated_variant.html`
+  - reordered and relabeled stress benchmark
+- `baseline_hybrid.html` -> `updated_hybrid.html`
+  - mixed recovery-mode benchmark
+- `baseline_refusal.html` -> `updated_refusal.html`
+  - refusal benchmark where no comparable control remains
+- `semantic_signals.html`
+  - focused semantic extraction and locator fixture
 
-Original demo page used to learn the baseline.
+The machine-readable matrix lives in [`benchmark-matrix.json`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/benchmark-matrix.json).
 
-### `updated.html`
+## Scenario Matrix
 
-Primary changed page used for the original end-to-end healing scenario.
+| Scenario | Baseline | Updated | Control | Change Type | Direct | Healenium | Xealenium | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `matrix-updated-main` | `baseline.html` | `updated.html` | full form | labels, wrappers, custom widgets | fail | partial | pass | Original benchmark where Xealenium heals hard DOM drift end to end. |
+| `matrix-updated-variant` | `baseline.html` | `updated_variant.html` | full form | reordered fields, label changes, structure changes | fail | partial | pass | Stress scenario for reordered text fields and semantic relabeling. |
+| `hybrid-direct` | `baseline_hybrid.html` | `updated_hybrid.html` | `fname,email,lname,newsletter,zip,terms,submit-btn` | unchanged or intentionally stable | pass | not-needed | not-needed | Controls that still work directly. |
+| `hybrid-healenium-phone` | `baseline_hybrid.html` | `updated_hybrid.html` | `phone` | soft locator drift | fail | pass | pass | Soft drift intended to be recovered by Healenium before Xealenium fallback is needed. |
+| `hybrid-healenium-country` | `baseline_hybrid.html` | `updated_hybrid.html` | `country` | soft locator drift | fail | pass | pass | Moderate drift on a select-like control. |
+| `hybrid-visual-city` | `baseline_hybrid.html` | `updated_hybrid.html` | `city` | hard semantic and structural drift | fail | fail | pass | Hard case that requires visual plus semantic recovery. |
+| `refusal-no-comparable-control` | `baseline_refusal.html` | `updated_refusal.html` | `project-code` | target removed, no comparable text control remains | fail | fail | refuse | Proves Xealenium does not guess when no safe match exists. |
 
-### `updated_variant.html`
+## Runnable Benchmark Suites
 
-Harder changed page that reorders controls and changes labels and structure more aggressively.
-
-### `baseline_hybrid.html`
-
-Baseline for the mixed recovery-mode scenario.
-
-### `updated_hybrid.html`
-
-Updated page intentionally designed so recovery splits across:
-
-- direct Selenium success
-- Healenium recovery
-- visual recovery
-
-### `semantic_signals.html`
-
-Focused fixture for semantic extraction and locator-generation tests.
-
-## Test Classes
-
-### `com.demo.VisualDemoTests`
+### `com.demo.benchmark.VisualPageMatrixTests`
 
 Purpose:
 
-- standard baseline vs updated demo flow
+- validates the main hard-change benchmark pages
+- proves Xealenium heals both the primary updated page and the reordered variant
 
-Validates:
-
-- baseline capture
-- end-to-end healing
-- report generation
-- interactive mode compatibility
-
-### `com.demo.VisualPageMatrixTests`
+### `com.demo.benchmark.HybridRecoveryModeTests`
 
 Purpose:
 
-- run the same flow against multiple updated page variants
+- proves the framework can distinguish recovery layers on one updated page
+- shows direct Selenium success, Healenium recovery, and Xealenium-only recovery in one suite
 
-Validates:
-
-- recovery across different labels, layouts, and ordering changes
-- semantic ranking stability
-
-### `com.demo.HybridRecoveryModeTests`
+### `com.demo.benchmark.RefusalBenchmarkTests`
 
 Purpose:
 
-- prove the framework can distinguish recovery layers on one updated page
+- proves Xealenium refuses recovery when no comparable control remains
 
-Breakdown on `updated_hybrid.html`:
+## Benchmark Summary Output
 
-- direct: `fname`, `email`, `lname`, `newsletter`, `zip`, `terms`, `submit-btn`
-- Healenium: `phone`, `country`
-- visual healing: `city`
+Benchmark runs emit:
+
+1. a scenario count line
+2. layer-focused summary counts
+3. one line per scenario from the catalog
+
+Example shape:
+
+```text
+[BENCHMARK] scenarios=7 directOnly=1 healeniumLayer=2 xealeniumOnly=1 xealeniumRefuse=1
+```
+
+Important note:
+
+- those counts are intentionally layer-focused, not a full partition of all scenarios
+- the full-form matrix scenarios are still listed explicitly right below the summary output
+- the scenario table above is the authoritative product-claim matrix
+
+## What The Matrix Proves
+
+This benchmark suite is designed to make the product claim easy to inspect:
+
+- direct Selenium still wins when the control is stable
+- Healenium still adds value for moderate DOM drift
+- Xealenium adds value when semantics survive but selector structure does not
+- Xealenium should refuse when confidence is too low or the target meaning is gone
+
+## Framework Unit Tests
 
 ### `com.visual.SmartLocatorBuilderTest`
 
-Purpose:
-
-- verify point-to-locator and element-to-locator generation
-
-Validates:
-
-- semantic selectors
+- point-to-locator and element-to-locator generation
 - uniqueness checks
-- rejection of low-quality selectors
 - contenteditable handling
 
 ### `com.visual.SemanticSimilarityTest`
 
-Purpose:
-
-- verify lexical and semantic scoring utilities
+- lexical fallback scoring
+- WordNet-backed similarity
+- semantic scoring sanity checks for tricky labels
 
 ### `com.visual.EmbeddingFingerprintBuilderTest`
 
-Purpose:
+- richer embedding fingerprint construction
 
-- verify the richer fingerprint format used for local embeddings
+### `com.visual.embedding.LocalEmbeddingServiceTest`
 
-### `com.visual.LocalEmbeddingServiceTest`
+- local ONNX loading
+- enable and disable behavior
+- config override behavior
 
-Purpose:
+### `com.visual.engine.HealingDecisionEngineTest`
 
-- verify local model loading and vector generation behavior
+- review-strategy behavior
+- threshold versus auto-accept behavior
 
-## Recommended Regression Runs
-
-### Deterministic baseline
+## Recommended Runs
 
 ```powershell
-.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.VisualPageMatrixTests"
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.benchmark.VisualPageMatrixTests"
 ```
 
-### Hybrid mode coverage
-
 ```powershell
-.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.HybridRecoveryModeTests"
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.benchmark.HybridRecoveryModeTests"
 ```
 
-### Embedding-enabled coverage
-
 ```powershell
-.\gradlew.bat --no-daemon `
-  "-Dvisual.embedding.enabled=true" `
-  "-Dvisual.embedding.modelDir=C:/PATH_TO_MODEL_DIR" `
-  "-Dvisual.embedding.modelName=gte-small" `
-  --rerun-tasks test --tests "com.demo.VisualPageMatrixTests"
+.\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.benchmark.RefusalBenchmarkTests"
 ```

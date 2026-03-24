@@ -1,5 +1,6 @@
 package com.visual;
 
+import com.visual.embedding.LocalEmbeddingService;
 import com.visual.semantic.SemanticSimilarity;
 import org.junit.jupiter.api.Test;
 
@@ -42,5 +43,21 @@ public class SemanticSimilarityTest {
         double unrelated = SemanticSimilarity.semanticScore("Email", "Cell");
 
         assertTrue(related > unrelated, "semantic score should favor email/mail-contact over email/cell");
+    }
+
+    @Test
+    void semanticScoreKeepsLastNameCloserToFamilyNameThanPhoneLine() {
+        LocalEmbeddingService embeddings = LocalEmbeddingService.getInstance();
+        double relatedEmbedding = LocalEmbeddingService.cosine(
+            embeddings.embed("Last Name"),
+            embeddings.embed("Family Name")
+        );
+        double unrelatedEmbedding = LocalEmbeddingService.cosine(
+            embeddings.embed("Last Name"),
+            embeddings.embed("Phone Line")
+        );
+
+        assertTrue(relatedEmbedding > unrelatedEmbedding,
+            "local semantic embeddings should favor family-name wording over phone-line wording");
     }
 }

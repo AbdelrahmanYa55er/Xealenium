@@ -155,7 +155,7 @@ final class WordNetSemanticService {
         if (!available) {
             return terms;
         }
-        for (POS pos : List.of(POS.NOUN)) {
+        for (POS pos : List.of(POS.NOUN, POS.ADJECTIVE)) {
             collectTermsForPos(token, pos, terms);
             if (!singular.equals(token)) {
                 collectTermsForPos(singular, pos, terms);

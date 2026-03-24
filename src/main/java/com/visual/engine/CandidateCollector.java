@@ -11,20 +11,19 @@ import java.util.List;
 import java.util.Map;
 
 public class CandidateCollector {
-    @SuppressWarnings("unchecked")
     public List<CollectedElementMetadata> collect(WebDriver driver) {
-        List<Map<String, Object>> raw = (List<Map<String, Object>>) ((JavascriptExecutor) driver)
-            .executeScript(BrowserSemanticScripts.visualCandidateCollectionScript());
         List<CollectedElementMetadata> collected = new ArrayList<>();
-        for (Map<String, Object> entry : raw) {
-            collected.add(toMetadata(entry));
+        Object raw = ((JavascriptExecutor) driver).executeScript(BrowserSemanticScripts.visualCandidateCollectionScript());
+        if (raw instanceof List<?> entries) {
+            for (Object entry : entries) {
+                collected.add(toMetadata(entry));
+            }
         }
         return collected;
     }
 
-    @SuppressWarnings("unchecked")
     public CollectedElementMetadata metadata(WebDriver driver, WebElement element) {
-        Map<String, Object> raw = (Map<String, Object>) ((JavascriptExecutor) driver)
+        Object raw = ((JavascriptExecutor) driver)
             .executeScript(BrowserSemanticScripts.visualMetadataScript(), element);
         return toMetadata(raw);
     }
@@ -72,19 +71,22 @@ public class CandidateCollector {
         return value == null ? "" : value.toString();
     }
 
-    private static CollectedElementMetadata toMetadata(Map<String, Object> raw) {
+    private static CollectedElementMetadata toMetadata(Object raw) {
+        if (!(raw instanceof Map<?, ?> map)) {
+            return new CollectedElementMetadata(0, 0, 0, 0, "", "", "", "", "", "", "");
+        }
         return new CollectedElementMetadata(
-            toInt(raw.get("x")),
-            toInt(raw.get("y")),
-            toInt(raw.get("w")),
-            toInt(raw.get("h")),
-            toStringValue(raw.get("text")),
-            toStringValue(raw.get("selector")),
-            toStringValue(raw.get("kind")),
-            toStringValue(raw.get("tag")),
-            toStringValue(raw.get("accessibleName")),
-            toStringValue(raw.get("semanticRole")),
-            toStringValue(raw.get("autocomplete"))
+            toInt(map.get("x")),
+            toInt(map.get("y")),
+            toInt(map.get("w")),
+            toInt(map.get("h")),
+            toStringValue(map.get("text")),
+            toStringValue(map.get("selector")),
+            toStringValue(map.get("kind")),
+            toStringValue(map.get("tag")),
+            toStringValue(map.get("accessibleName")),
+            toStringValue(map.get("semanticRole")),
+            toStringValue(map.get("autocomplete"))
         );
     }
 }

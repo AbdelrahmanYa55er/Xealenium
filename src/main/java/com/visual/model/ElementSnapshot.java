@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class ElementSnapshot {
     public String locator, screenshotBase64, text, pageUrl, kind, tagName, accessibleName, semanticRole, autocomplete,
         labelText, placeholder, descriptionText, sectionContext, parentContext, inputType,
-        semanticFingerprint, embeddingModel;
+        semanticFingerprint, embeddingModel, pageTitle, pageFingerprint;
     public float[] embeddingVector;
     public int x, y, w, h;
     public ElementSnapshot() {}
@@ -33,6 +33,12 @@ public class ElementSnapshot {
         this.sectionContext = sectionContext;
         this.parentContext = parentContext;
         this.inputType = inputType;
+        return this;
+    }
+
+    public ElementSnapshot withPageIdentity(String pageTitle, String pageFingerprint) {
+        this.pageTitle = pageTitle;
+        this.pageFingerprint = pageFingerprint;
         return this;
     }
 }

@@ -34,8 +34,9 @@ public final class BrowserSemanticScripts {
           var tag = el.tagName.toLowerCase();
           var cls = attr(el, 'class').toLowerCase();
           if (tag === 'label' || tag === 'legend') return txt;
-          if (cls.indexOf('label') >= 0 || cls.indexOf('title') >= 0 || cls.indexOf('heading') >= 0) return txt;
-          if (tag === 'span' || tag === 'div' || tag === 'p' || tag === 'strong' || /^h[1-6]$/.test(tag)) return txt;
+          if (cls.indexOf('label') >= 0 || cls.indexOf('title') >= 0 || cls.indexOf('heading') >= 0
+              || cls.indexOf('caption') >= 0 || cls.indexOf('eyebrow') >= 0) return txt;
+          if (/^h[1-6]$/.test(tag)) return txt;
           return '';
         }
         function isFieldLike(el) {
@@ -76,7 +77,7 @@ public final class BrowserSemanticScripts {
           var current = el;
           while (current && current.parentElement) {
             var parent = current.parentElement;
-            var labels = parent.querySelectorAll(':scope > label, :scope > .e-title, :scope > [data-label], :scope > [aria-label]');
+            var labels = parent.querySelectorAll(':scope > label, :scope > legend, :scope > .e-title, :scope > .caption, :scope > .eyebrow, :scope > [data-label], :scope > [aria-label]');
             for (var i = labels.length - 1; i >= 0; i--) {
               if (labels[i] === current || labels[i].contains(current)) continue;
               var txt = textOf(labels[i]) || attr(labels[i], 'aria-label') || attr(labels[i], 'data-label');
@@ -92,6 +93,9 @@ public final class BrowserSemanticScripts {
         function primaryBasicLabelText(el) {
           var labels = basicLabelTexts(el);
           return labels.length ? labels[0] : '';
+        }
+        function primaryLabelText(el) {
+          return primaryBasicLabelText(el);
         }
         function joinedBasicLabelText(el) {
           return basicLabelTexts(el).join(' | ');
@@ -319,7 +323,7 @@ public final class BrowserSemanticScripts {
     public static String domSemanticExtractionScript() {
         return COMMON_HELPERS + """
             var el = arguments[0];
-            var labelText = primaryBasicLabelText(el);
+            var labelText = primaryContextualLabelText(el) || primaryBasicLabelText(el);
             var role = computedRole(el);
             return {
               accessibleName: accessibleName(el, labelText, role),
@@ -332,7 +336,31 @@ public final class BrowserSemanticScripts {
               parentContext: parentContext(el),
               inputType: controlType(el)
             };
-            """;
+        """;
+    }
+
+    public static String pageIdentityScript() {
+        return COMMON_HELPERS + """
+            function collectPageIdentityTexts() {
+              var values = [];
+              function pushText(text) {
+                var normalized = trim(text).replace(/\\s+/g, ' ');
+                if (!normalized) return;
+                if (values.indexOf(normalized) >= 0) return;
+                values.push(normalized);
+              }
+              pushText(document.title || '');
+              document.querySelectorAll('h1, h2, h3, legend, label, .e-title, [data-section-title], [data-label]').forEach(function(node) {
+                pushText(textOf(node) || attr(node, 'data-label'));
+              });
+              return values.slice(0, 18);
+            }
+            var texts = collectPageIdentityTexts();
+            return {
+              pageTitle: trim(document.title || ''),
+              pageFingerprint: texts.join(' | ')
+            };
+        """;
     }
 
     public static String locatorExtractionScript(String startExpression) {
@@ -381,7 +409,7 @@ public final class BrowserSemanticScripts {
               var sy=Math.round(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);
               if(r.width<=0||r.height<=0) continue;
               var idx=window.__visualCandidates.length;
-              var labelText = joinedBasicLabelText(e);
+              var labelText = primaryContextualLabelText(e) || joinedBasicLabelText(e);
               var role = computedRole(e);
               window.__visualCandidates.push(e);
               out.push({
@@ -408,7 +436,7 @@ public final class BrowserSemanticScripts {
             var e=arguments[0], r=e.getBoundingClientRect(), parts=[];
             var sx=Math.round(window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0);
             var sy=Math.round(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);
-            var labelText = joinedBasicLabelText(e);
+            var labelText = primaryContextualLabelText(e) || joinedBasicLabelText(e);
             var role = computedRoleWithSelectHint(e);
             return {
               x:Math.round(r.left)+sx, y:Math.round(r.top)+sy, w:Math.round(r.width), h:Math.round(r.height),

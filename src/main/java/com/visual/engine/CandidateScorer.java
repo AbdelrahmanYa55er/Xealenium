@@ -50,6 +50,8 @@ final class CandidateScorer {
                                  FieldAssignmentEngine.FieldCompetitionContext fieldCompetition) {
         SmartLocatorBuilder locatorBuilder = new SmartLocatorBuilder(driver);
         double embeddingWeight = embeddingsActive ? W_EMB : 0.0;
+        String baseSemanticName = semanticPrimaryName(base.kind, base.accessibleName, base.labelText, base.placeholder, base.text, base.inputType);
+        float[] baseSemanticNameEmbedding = embeddingsActive ? embeddingService.embed(baseSemanticName) : null;
         List<CandidateScore> ranked = new ArrayList<>();
         List<HeatmapRenderer.Candidate> heatmapCandidates = new ArrayList<>();
 
@@ -61,7 +63,11 @@ final class CandidateScorer {
             double seq = FieldAssignmentEngine.sequenceScore(baseSequence, baseKindCount, candidate.sequence, candidate.kindCount, baseKind, candidate.kind);
             double role = semanticRoleScore(base.semanticRole, candidate.semanticRole, baseKind, candidate.kind);
             double autocomplete = autocompleteScore(base.autocomplete, candidate.autocomplete);
-            double semantic = semanticTextScore(base, candidate);
+            String candidateSemanticName = semanticPrimaryName(candidate.kind, candidate.accessibleName, candidate.labelText,
+                candidate.placeholder, candidate.text, candidate.inputType);
+            float[] candidateSemanticNameEmbedding = embeddingsActive ? embeddingService.embed(candidateSemanticName) : null;
+            double semantic = semanticTextScore(base, candidate, baseSemanticName, candidateSemanticName,
+                baseSemanticNameEmbedding, candidateSemanticNameEmbedding, embeddingsActive);
             double fieldSemantic = fieldAssignmentEngine.fieldSemanticScore(candidate, fieldCompetition);
             double embedding = embeddingsActive ? embeddingScore(baseEmbedding, candidate.embeddingVector, baseKind, candidate.kind) : 0.0;
             double score = W_VIS * vis + W_POS * pos + W_TXT * txt + W_KIND * kind + W_SEQ * seq
@@ -131,10 +137,14 @@ final class CandidateScorer {
         return baseToken.equals(candidateToken) ? 1.0 : 0.0;
     }
 
-    private static double semanticTextScore(ElementSnapshot base, CandidateMetadata candidate) {
-        String baseAccessible = nv(base.accessibleName);
-        String candidateAccessible = nv(candidate.accessibleName);
-        double accessible = scoreIfPresent(baseAccessible, candidateAccessible);
+    private double semanticTextScore(ElementSnapshot base, CandidateMetadata candidate,
+                                     String baseAccessible, String candidateAccessible,
+                                     float[] baseSemanticNameEmbedding, float[] candidateSemanticNameEmbedding,
+                                     boolean embeddingsActive) {
+        double accessible = Math.max(
+            scoreIfPresent(baseAccessible, candidateAccessible),
+            compoundLabelScore(baseAccessible, candidateAccessible, embeddingsActive)
+        );
         double label = Math.max(scoreIfPresent(base.labelText, candidate.labelText),
             Math.max(scoreIfPresent(baseAccessible, candidate.labelText), scoreIfPresent(base.labelText, candidateAccessible)));
         double crossAccessible = Math.max(
@@ -150,12 +160,20 @@ final class CandidateScorer {
             scoreIfPresent(base.parentContext, candidate.parentContext)
         );
         double text = scoreIfPresent(base.text, candidate.text);
+        double nameEmbedding = embeddingsActive
+            ? LocalEmbeddingService.cosine(baseSemanticNameEmbedding, candidateSemanticNameEmbedding)
+            : 0.0;
         if (!baseAccessible.isBlank() && !candidateAccessible.isBlank()) {
+            if (embeddingsActive && nameEmbedding > 0.0) {
+                return (0.22 * Math.max(accessible, label)) + (0.12 * placeholder) + (0.10 * context)
+                    + (0.08 * crossAccessible) + (0.08 * text) + (0.40 * nameEmbedding);
+            }
             return (0.38 * Math.max(accessible, label)) + (0.18 * placeholder) + (0.14 * context)
                 + (0.15 * crossAccessible) + (0.15 * text);
         }
-        return Math.max(Math.max(accessible, label),
+        double fallback = Math.max(Math.max(accessible, label),
             Math.max(placeholder, Math.max(crossAccessible, Math.max(context, text))));
+        return embeddingsActive ? Math.max(fallback, nameEmbedding) : fallback;
     }
 
     private static double embeddingScore(float[] baselineVector, float[] candidateVector, String baseKind, String candidateKind) {
@@ -165,6 +183,65 @@ final class CandidateScorer {
             return 0.0;
         }
         return LocalEmbeddingService.cosine(baselineVector, candidateVector);
+    }
+
+    private static String semanticPrimaryName(String kind, String accessibleName, String labelText, String placeholder,
+                                              String text, String inputType) {
+        boolean fieldLike = Objects.equals(kind, "text") || Objects.equals(kind, "select")
+            || Objects.equals(normalizeInputType(inputType), "contenteditable")
+            || Objects.equals(normalizeInputType(inputType), "text")
+            || Objects.equals(normalizeInputType(inputType), "email")
+            || Objects.equals(normalizeInputType(inputType), "tel")
+            || Objects.equals(normalizeInputType(inputType), "search")
+            || Objects.equals(normalizeInputType(inputType), "url");
+        if (fieldLike) {
+            String preferred = firstNonBlank(labelText, accessibleName, placeholder);
+            if (!preferred.isBlank()) {
+                return preferred;
+            }
+        }
+        return firstNonBlank(accessibleName, labelText, placeholder, text);
+    }
+
+    private static String normalizeInputType(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private double compoundLabelScore(String left, String right, boolean embeddingsActive) {
+        String[] leftTokens = normalizedTokens(left);
+        String[] rightTokens = normalizedTokens(right);
+        if (leftTokens.length < 2 || rightTokens.length < 2) {
+            return 0.0;
+        }
+        String leftHead = leftTokens[leftTokens.length - 1];
+        String rightHead = rightTokens[rightTokens.length - 1];
+        if (!leftHead.equals(rightHead)) {
+            return 0.0;
+        }
+        String leftModifier = String.join(" ", java.util.Arrays.copyOf(leftTokens, leftTokens.length - 1)).trim();
+        String rightModifier = String.join(" ", java.util.Arrays.copyOf(rightTokens, rightTokens.length - 1)).trim();
+        if (leftModifier.isBlank() || rightModifier.isBlank()) {
+            return 0.0;
+        }
+        double lexical = SemanticSimilarity.semanticScore(leftModifier, rightModifier);
+        double embedding = embeddingsActive
+            ? LocalEmbeddingService.cosine(embeddingService.embed(leftModifier), embeddingService.embed(rightModifier))
+            : 0.0;
+        return (0.35 * 1.0) + (0.65 * Math.max(lexical, embedding));
+    }
+
+    private static String[] normalizedTokens(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase().replaceAll("[^a-z0-9]+", " ").trim();
+        return normalized.isBlank() ? new String[0] : normalized.split("\\s+");
     }
 
     private static String normalizeRole(String role, String kind) {

@@ -52,6 +52,7 @@ public final class SemanticSimilarity {
         if (!WORDNET.isAvailable()) {
             return lexical;
         }
+        double phraseKnowledge = WORDNET.phraseSimilarity(a, b);
         List<String> leftTokens = semanticTokens(a);
         List<String> rightTokens = semanticTokens(b);
         double lexicalKnowledge = 0.0;
@@ -61,8 +62,15 @@ public final class SemanticSimilarity {
             lexicalKnowledge = bestSingleTokenMatch(leftTokens.get(0), rightTokens);
         } else if (rightTokens.size() == 1 && leftTokens.size() <= 3) {
             lexicalKnowledge = bestSingleTokenMatch(rightTokens.get(0), leftTokens);
+        } else if (!leftTokens.isEmpty() && !rightTokens.isEmpty() && leftTokens.size() <= 4 && rightTokens.size() <= 4) {
+            lexicalKnowledge = directionalTokenMatch(leftTokens, rightTokens);
         }
-        return Math.max(lexical, lexicalKnowledge);
+        double blendedKnowledge = (0.65 * phraseKnowledge) + (0.35 * lexicalKnowledge);
+        double score = Math.max(lexical, Math.max(lexicalKnowledge, blendedKnowledge));
+        if (tokenCount(a) > 1 && tokenCount(b) > 1 && !sharesToken(a, b) && lexical < 0.50) {
+            score = Math.min(score, 0.70);
+        }
+        return score;
     }
 
     /** Jaccard coefficient on word tokens. */
@@ -118,5 +126,29 @@ public final class SemanticSimilarity {
             best = Math.max(best, WORDNET.phraseSimilarity(token, candidate));
         }
         return best;
+    }
+
+    private static double directionalTokenMatch(List<String> leftTokens, List<String> rightTokens) {
+        double forward = 0.0;
+        for (String token : leftTokens) {
+            forward += bestSingleTokenMatch(token, rightTokens);
+        }
+        forward /= leftTokens.size();
+
+        double backward = 0.0;
+        for (String token : rightTokens) {
+            backward += bestSingleTokenMatch(token, leftTokens);
+        }
+        backward /= rightTokens.size();
+        return Math.max(forward, backward);
+    }
+
+    private static boolean sharesToken(String left, String right) {
+        Set<String> leftTokens = new HashSet<>(Arrays.asList(normalize(left).replaceAll("[^a-z0-9]+", " ").trim().split("\\s+")));
+        Set<String> rightTokens = new HashSet<>(Arrays.asList(normalize(right).replaceAll("[^a-z0-9]+", " ").trim().split("\\s+")));
+        leftTokens.remove("");
+        rightTokens.remove("");
+        leftTokens.retainAll(rightTokens);
+        return !leftTokens.isEmpty();
     }
 }

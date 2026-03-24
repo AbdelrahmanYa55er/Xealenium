@@ -1,5 +1,6 @@
 package com.visual.driver;
 
+import com.visual.config.VisualHealingConfig;
 import com.visual.engine.VisualHealingEngine;
 import com.visual.locator.SmartLocatorBuilder;
 import com.visual.locator.SmartLocatorResult;
@@ -36,9 +37,17 @@ public class VisualDriver implements WebDriver,JavascriptExecutor,TakesScreensho
         this.wrapped=wrapped; this.screenshotDriver=wrapped;
         engine=new VisualHealingEngine();
     }
+    public VisualDriver(WebDriver wrapped, VisualHealingConfig config){
+        this.wrapped=wrapped; this.screenshotDriver=wrapped;
+        engine=new VisualHealingEngine(config);
+    }
     public VisualDriver(WebDriver wrapped, WebDriver screenshotDriver){
         this.wrapped=wrapped; this.screenshotDriver=screenshotDriver;
         engine=new VisualHealingEngine();
+    }
+    public VisualDriver(WebDriver wrapped, WebDriver screenshotDriver, VisualHealingConfig config){
+        this.wrapped=wrapped; this.screenshotDriver=screenshotDriver;
+        engine=new VisualHealingEngine(config);
     }
     public VisualDriver(WebDriver wrapped, WebDriver screenshotDriver, VisualHealingEngine e){
         this.wrapped=wrapped; this.screenshotDriver=screenshotDriver; engine=e;

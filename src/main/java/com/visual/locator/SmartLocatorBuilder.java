@@ -89,24 +89,23 @@ public class SmartLocatorBuilder {
             extracted.tagName, extracted.accessibleName, extracted.semanticRole, extracted.autocomplete, top, logs);
     }
 
-    @SuppressWarnings("unchecked")
     private ExtractedElementMetadata detectElementFromPoint(int x, int y) {
         Object raw = js.executeScript(BrowserSemanticScripts.locatorExtractionScript("document.elementFromPoint(arguments[0], arguments[1])"), x, y);
         return withSemanticSignals(toExtractedElement(raw, "No DOM element found at point (" + x + "," + y + ")"));
     }
 
-    @SuppressWarnings("unchecked")
     private ExtractedElementMetadata detectElementFromElement(WebElement element) {
         Object raw = js.executeScript(BrowserSemanticScripts.locatorExtractionScript("arguments[0]"), element);
         return withSemanticSignals(toExtractedElement(raw, "Could not normalize DOM element " + element));
     }
 
-    @SuppressWarnings("unchecked")
     private ExtractedElementMetadata toExtractedElement(Object raw, String errorMessage) {
         if (!(raw instanceof List<?> parts) || parts.size() < 2 || !(parts.get(0) instanceof WebElement element)) {
             throw new NoSuchElementException(errorMessage);
         }
-        Map<String, Object> meta = (Map<String, Object>) parts.get(1);
+        if (!(parts.get(1) instanceof Map<?, ?> meta)) {
+            throw new NoSuchElementException(errorMessage);
+        }
         return new ExtractedElementMetadata(
             element,
             str(meta.get("tagName")),

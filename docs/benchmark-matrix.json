@@ -1,0 +1,79 @@
+[
+  {
+    "id": "matrix-updated-main",
+    "baselinePage": "baseline.html",
+    "updatedPage": "updated.html",
+    "control": "full form",
+    "changeType": "labels, wrappers, custom widgets",
+    "directResult": "fail",
+    "healeniumResult": "partial",
+    "xealeniumResult": "pass",
+    "notes": "Original demo benchmark where Xealenium heals the hard DOM drift end to end."
+  },
+  {
+    "id": "matrix-updated-variant",
+    "baselinePage": "baseline.html",
+    "updatedPage": "updated_variant.html",
+    "control": "full form",
+    "changeType": "reordered fields, label changes, structure changes",
+    "directResult": "fail",
+    "healeniumResult": "partial",
+    "xealeniumResult": "pass",
+    "notes": "Stress scenario for reordered text fields and semantic relabeling."
+  },
+  {
+    "id": "hybrid-direct",
+    "baselinePage": "baseline_hybrid.html",
+    "updatedPage": "updated_hybrid.html",
+    "control": "fname,email,lname,newsletter,zip,terms,submit-btn",
+    "changeType": "unchanged or intentionally stable",
+    "directResult": "pass",
+    "healeniumResult": "not-needed",
+    "xealeniumResult": "not-needed",
+    "notes": "Controls that still work through direct Selenium lookup."
+  },
+  {
+    "id": "hybrid-healenium-phone",
+    "baselinePage": "baseline_hybrid.html",
+    "updatedPage": "updated_hybrid.html",
+    "control": "phone",
+    "changeType": "soft locator drift",
+    "directResult": "fail",
+    "healeniumResult": "pass",
+    "xealeniumResult": "pass",
+    "notes": "Soft drift intended to be recovered by Healenium before visual healing is needed."
+  },
+  {
+    "id": "hybrid-healenium-country",
+    "baselinePage": "baseline_hybrid.html",
+    "updatedPage": "updated_hybrid.html",
+    "control": "country",
+    "changeType": "soft locator drift",
+    "directResult": "fail",
+    "healeniumResult": "pass",
+    "xealeniumResult": "pass",
+    "notes": "Select control with moderate DOM drift."
+  },
+  {
+    "id": "hybrid-visual-city",
+    "baselinePage": "baseline_hybrid.html",
+    "updatedPage": "updated_hybrid.html",
+    "control": "city",
+    "changeType": "hard semantic and structural drift",
+    "directResult": "fail",
+    "healeniumResult": "fail",
+    "xealeniumResult": "pass",
+    "notes": "Hard case that requires Xealenium visual plus semantic recovery."
+  },
+  {
+    "id": "refusal-no-comparable-control",
+    "baselinePage": "baseline_refusal.html",
+    "updatedPage": "updated_refusal.html",
+    "control": "project-code",
+    "changeType": "target removed, no comparable text control remains",
+    "directResult": "fail",
+    "healeniumResult": "fail",
+    "xealeniumResult": "refuse",
+    "notes": "Refusal benchmark proving Xealenium does not guess when the baseline control has no reasonable match."
+  }
+]

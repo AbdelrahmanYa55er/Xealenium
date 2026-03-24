@@ -1,11 +1,13 @@
 package com.visual.engine;
 
 import com.visual.baseline.BaselineStore;
+import com.visual.baseline.PageIdentityService;
 import com.visual.embedding.EmbeddingFingerprintBuilder;
 import com.visual.embedding.LocalEmbeddingService;
 import com.visual.image.ImageUtils;
 import com.visual.model.CollectedElementMetadata;
 import com.visual.model.ElementSnapshot;
+import com.visual.model.PageIdentity;
 import com.visual.semantic.SemanticSignalExtractor;
 import com.visual.semantic.SemanticSignals;
 
@@ -20,6 +22,7 @@ final class BaselineCaptureService {
     private final SemanticSignalExtractor semanticExtractor;
     private final LocalEmbeddingService embeddingService;
     private final CandidateCollector candidateCollector;
+    private final PageIdentityService pageIdentityService;
 
     BaselineCaptureService(BaselineStore store, SemanticSignalExtractor semanticExtractor,
                            LocalEmbeddingService embeddingService, CandidateCollector candidateCollector) {
@@ -27,6 +30,7 @@ final class BaselineCaptureService {
         this.semanticExtractor = semanticExtractor;
         this.embeddingService = embeddingService;
         this.candidateCollector = candidateCollector;
+        this.pageIdentityService = new PageIdentityService();
     }
 
     void capture(WebDriver driver, WebElement element, By locator, boolean replaceExisting) {
@@ -51,6 +55,7 @@ final class BaselineCaptureService {
             String accessibleName = firstNonBlank(signals.getAccessibleName(), meta.getAccessibleName());
             String semanticRole = firstNonBlank(signals.getSemanticRole(), meta.getSemanticRole());
             String autocomplete = firstNonBlank(signals.getAutocomplete(), meta.getAutocomplete());
+            PageIdentity pageIdentity = pageIdentityService.capture(driver);
 
             ElementSnapshot snapshot = new ElementSnapshot(locator.toString(), screenshotBase64, x, y, w, h, text, pageUrl, kind, tagName,
                 accessibleName, semanticRole, autocomplete)
@@ -61,7 +66,8 @@ final class BaselineCaptureService {
                     signals.getSectionContext(),
                     signals.getParentContext(),
                     signals.getInputType()
-                );
+                )
+                .withPageIdentity(pageIdentity.pageTitle, pageIdentity.pageFingerprint);
 
             String fingerprint = EmbeddingFingerprintBuilder.forSnapshot(locator.toString(), snapshot);
             float[] embeddingVector = embeddingService.embed(fingerprint);

@@ -1,6 +1,7 @@
 package com.demo;
 
 import com.epam.healenium.SelfHealingDriver;
+import com.visual.config.VisualHealingConfig;
 import com.visual.driver.VisualDriver;
 import com.visual.engine.VisualHealingEngine;
 import org.junit.jupiter.api.*;
@@ -29,11 +30,8 @@ public class VisualDemoTests {
         opts.addArguments("--remote-allow-origins=*", "--no-sandbox", "--start-maximized");
         chrome = new ChromeDriver(opts);
         WebDriver healenium = SelfHealingDriver.create(chrome);
-        driver = new VisualDriver(healenium, chrome);
-
-        // Enable interactive mode if -Dinteractive=true
-        boolean interactive = Boolean.parseBoolean(System.getProperty("interactive", "false"));
-        driver.getEngine().setInteractiveMode(interactive);
+        VisualHealingConfig config = VisualHealingConfig.fromSystemProperties();
+        driver = new VisualDriver(healenium, chrome, config);
 
         testUrl = System.getProperty("testUrl", "file:///c:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/pages/baseline.html");
     }

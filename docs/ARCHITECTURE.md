@@ -2,69 +2,141 @@
 
 ## Overview
 
-Xealenium is organized around three recovery layers:
+Xealenium has three recovery layers:
 
 1. Selenium
 2. Healenium
-3. Visual healing
+3. Xealenium visual healing
 
-Visual healing is responsible for the “hard DOM drift” case where the original locator contract is no longer reliable.
+The third layer exists for hard DOM drift, where the original selector shape is no longer trustworthy enough to preserve.
 
-## Main Flow
+## Component Diagram
 
-```text
-failed locator
-  -> Selenium miss
-  -> Healenium miss or unsuitable recovery
-  -> VisualHealingEngine candidate search
-  -> semantic + visual scoring
-  -> best candidate
-  -> SmartLocatorBuilder
-  -> healed locator + report + heatmap
+```mermaid
+flowchart LR
+    A["Test / Caller"] --> B["VisualDriver"]
+    B --> C["Wrapped Driver (Selenium / Healenium)"]
+    B --> D["VisualHealingEngine"]
+    D --> E["BaselineStore"]
+    D --> F["CandidateCollector"]
+    D --> G["CandidateScorer"]
+    D --> H["HealingDecisionEngine"]
+    D --> I["HealingReporter"]
+    D --> J["SmartLocatorBuilder"]
+    D --> K["SemanticSignalExtractor"]
+    D --> L["LocalEmbeddingService"]
 ```
 
-## Core Components
+## Public API
 
-### `VisualDriver`
+The intended public entry points are:
 
-- wraps the active driver
-- captures baselines on successful baseline runs
-- routes unresolved locator failures into `VisualHealingEngine`
-- exposes smart-locator generation from screen coordinates
+- [`VisualDriver.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/driver/VisualDriver.java)
+- [`VisualHealingEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/VisualHealingEngine.java)
+- [`VisualHealingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/VisualHealingConfig.java)
+- [`EmbeddingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/EmbeddingConfig.java)
 
-### `VisualHealingEngine`
+System properties still work as a compatibility path, but config objects are now the preferred runtime API.
 
-- stores and loads baseline snapshots
-- enumerates candidate controls
-- compares baseline snapshots against live candidates
-- computes ranking scores
-- renders heatmaps
-- supports human-in-the-loop confirmation
-- records healed locator reports
+## Package Structure
 
-### `BaselineStore`
+- `com.visual.driver`
+  - driver wrapper and user-facing entry point
+- `com.visual.engine`
+  - orchestration, candidate collection, scoring, review, and reporting coordination
+- `com.visual.semantic`
+  - DOM and AX semantic providers plus lexical similarity
+- `com.visual.locator`
+  - smart locator generation and selector ranking
+- `com.visual.baseline`
+  - snapshot persistence and page identity lookup
+- `com.visual.embedding`
+  - local ONNX embedding runtime and fingerprint construction
+- `com.visual.report`
+  - heatmaps and HTML report artifacts
+- `com.visual.image`
+  - screenshot and image utilities
+- `com.visual.model`
+  - typed models shared across engine layers
+- `com.visual.config`
+  - runtime configuration objects
 
-- persists snapshots into `visual-baseline.json`
-- scopes entries by page URL and locator
-- protects baseline entries from accidental overwrite unless refresh is enabled
+## Main Runtime Flow
 
-### `SmartLocatorBuilder`
+```text
+findElement(By...)
+  -> Selenium lookup
+  -> Healenium lookup
+  -> VisualDriver fallback
+  -> VisualHealingEngine.heal(...)
+  -> baseline lookup
+  -> candidate collection
+  -> semantic enrichment
+  -> field assignment
+  -> candidate scoring
+  -> review strategy decision
+  -> smart locator generation
+  -> heatmap + report
+```
 
-- can start from `(x, y)` or a concrete `WebElement`
-- normalizes noisy targets like inner spans, icons, and wrappers
-- generates multiple locator candidates
-- validates uniqueness and exact identity
-- ranks candidates for stability and readability
+## VisualHealingEngine
+
+[`VisualHealingEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/VisualHealingEngine.java) is now a facade-orchestrator instead of a god class.
+
+It coordinates:
+
+- baseline capture
+- baseline lookup
+- candidate collection
+- field assignment
+- scoring
+- review strategy selection
+- report generation
+
+It no longer owns all of those implementations directly.
+
+## Engine Components
+
+### Baseline capture
+
+- [`BaselineCaptureService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/BaselineCaptureService.java)
+- [`BaselineStore.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/baseline/BaselineStore.java)
+- [`PageIdentityService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/baseline/PageIdentityService.java)
+
+### Candidate collection and metadata
+
+- [`CandidateCollector.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/CandidateCollector.java)
+- [`CandidateMetadataCollector.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/CandidateMetadataCollector.java)
+
+### Scoring and assignment
+
+- [`FieldAssignmentEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/FieldAssignmentEngine.java)
+- [`CandidateScorer.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/CandidateScorer.java)
+- [`HealingDecisionEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/HealingDecisionEngine.java)
+
+### Review strategies
+
+- [`ThresholdOnlyReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/ThresholdOnlyReviewStrategy.java)
+- [`AutoAcceptReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/AutoAcceptReviewStrategy.java)
+- [`SwingReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/SwingReviewStrategy.java)
+
+### Reporting
+
+- [`HealingReporter.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/HealingReporter.java)
+- [`HeatmapRenderer.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/report/HeatmapRenderer.java)
 
 ## Semantic Layer
 
-### Providers
+The semantic layer is shared by both the healer and the locator builder.
 
-- `DomSemanticProvider`
-- `AccessibilityTreeSemanticProvider`
-- `SemanticSignalExtractor`
+Core classes:
 
-### Signals
+- [`DomSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/DomSemanticProvider.java)
+- [`AccessibilityTreeSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/AccessibilityTreeSemanticProvider.java)
+- [`SemanticSignalExtractor.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/SemanticSignalExtractor.java)
+- [`BrowserSemanticScripts.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/BrowserSemanticScripts.java)
+
+Signals include:
 
 - accessible name
 - semantic role
@@ -76,41 +148,46 @@ failed locator
 - parent context
 - input type
 
-The goal is to feed the same semantic truth into both the visual scorer and the smart locator builder.
+This shared pipeline is the single source of truth for DOM and semantic extraction.
+
+## Locator Layer
+
+[`SmartLocatorBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/locator/SmartLocatorBuilder.java) is responsible for:
+
+- element normalization from points or nested wrappers
+- candidate selector generation
+- selector validation
+- readability and stability ranking
+
+It does not own healing decisions.
 
 ## Embedding Layer
 
-Embeddings are optional and layered on top of the deterministic scorer.
+[`EmbeddingFingerprintBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/EmbeddingFingerprintBuilder.java) builds the semantic fingerprint.
 
-### `EmbeddingFingerprintBuilder`
+[`LocalEmbeddingService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/LocalEmbeddingService.java) loads the local ONNX model and computes embeddings when enabled.
 
-Builds a semantic fingerprint from:
+The embedding layer is isolated from reporting and UI.
 
-- locator tokens
-- kind
-- tag
-- role
-- input type
-- accessible name
-- label
-- placeholder
-- description
-- autocomplete
-- context
-- text
+## Reports And Artifacts
 
-### `LocalEmbeddingService`
+Xealenium keeps local artifacts for debugging and review:
 
-- loads ONNX model and tokenizer locally
-- computes sentence embeddings
-- adds an `emb` score to candidate ranking when enabled
+- `visual-baseline.json`
+- `visual-heatmap-*.png`
+- `visual-healing-report.html`
 
-## Hybrid Testing Design
+Heatmaps are rendered against full-page stitched screenshots using page coordinates, which keeps lower-page overlays aligned after scroll.
 
-The project now includes a hybrid page pair that exercises all three recovery modes on one updated page:
+## Benchmarks
 
-- direct lookup still works for some controls
-- Healenium is needed for soft DOM drift
-- visual healing is needed for hard DOM drift
+Benchmark suites live in `src/test/java/com/demo/benchmark` and are intentionally separate from framework unit tests.
 
-That makes it easier to reason about recovery behavior without switching between multiple suites.
+They prove four claims:
+
+- direct Selenium still works where nothing important changed
+- Healenium can recover soft drift
+- Xealenium can recover harder semantic and structural drift
+- Xealenium can refuse unsafe guesses
+
+See [`TEST_MATRIX.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/TEST_MATRIX.md) for the scenario catalog.

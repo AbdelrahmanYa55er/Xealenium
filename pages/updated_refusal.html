@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Updated Refusal Page</title>
+    <style>
+        body {
+            font-family: Georgia, serif;
+            max-width: 760px;
+            margin: 40px auto;
+            padding: 24px;
+            background: linear-gradient(180deg, #fcf4eb 0%, #efe4d7 100%);
+            color: #35271f;
+        }
+        .workspace {
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid #d9cbbb;
+            border-radius: 22px;
+            padding: 30px;
+            box-shadow: 0 18px 42px rgba(84, 56, 33, 0.12);
+        }
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 22px;
+        }
+        .card-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 82px;
+            border-radius: 16px;
+            border: 1px solid #ceb9a2;
+            background: #fffaf3;
+            color: #5f4331;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .toolbar a {
+            text-decoration: none;
+            color: #6d4c39;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<section class="workspace">
+    <h1>Release Command Center</h1>
+    <p>No editable release metadata is shown on this screen. Only action shortcuts are available.</p>
+    <div class="actions">
+        <div class="card-action" role="button" tabindex="0">Launch Audit</div>
+        <div class="card-action" role="button" tabindex="0">Archive Summary</div>
+        <div class="card-action" role="button" tabindex="0">Open Deployment</div>
+        <div class="card-action" role="button" tabindex="0">Notify Reviewers</div>
+    </div>
+    <div class="toolbar">
+        <a href="#backlog">Backlog</a>
+        <a href="#history">History</a>
+    </div>
+</section>
+</body>
+</html>

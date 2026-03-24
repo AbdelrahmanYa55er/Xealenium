@@ -1,6 +1,11 @@
 package com.visual.embedding;
+
+import com.visual.config.EmbeddingConfig;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,6 +38,20 @@ public class LocalEmbeddingServiceTest {
         assertFalse(service.isEnabled());
         assertEquals("disabled-by-property", service.getDisabledReason());
         assertNull(service.embed("accessible_name=email"));
+    }
+
+    @Test
+    void explicitConfigOverridesSystemPropertyDefaults() {
+        System.setProperty("visual.embedding.enabled", "false");
+        EmbeddingConfig config = EmbeddingConfig.builder()
+            .enabled(true)
+            .modelDir(Path.of("C:\\does-not-exist\\xealenium-no-model"))
+            .build();
+
+        LocalEmbeddingService service = LocalEmbeddingService.getInstance(config);
+
+        assertFalse(service.isEnabled());
+        assertTrue(service.getDisabledReason().contains("not-configured"));
     }
 
     private static void clearEmbeddingProperties() {
