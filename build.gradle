@@ -27,7 +27,7 @@ dependencies {
 }
 test {
     useJUnitPlatform()
-    systemProperty 'testUrl', System.getProperty('testUrl', 'http://localhost:8080/index.html')
+    systemProperty 'testUrl', System.getProperty('testUrl', file('pages/baseline.html').toURI().toString())
     systemProperty 'interactive', System.getProperty('interactive', 'false')
     systemProperty 'report', System.getProperty('report', 'true')
     systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', '')

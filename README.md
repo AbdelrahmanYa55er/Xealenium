@@ -76,7 +76,7 @@ Benchmarks and demos live under `src/test/java`.
 
 ## Page Sets
 
-Current HTML assets in [`pages`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/pages):
+Current HTML assets in [`pages`](pages):
 
 - `baseline.html` / `updated.html`
   - original hard-drift pair
@@ -130,16 +130,16 @@ The repo intentionally does not commit ONNX model binaries. Download the default
 .\scripts\download-model.ps1
 ```
 
-Details are in [`models/README.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/models/README.md).
+Details are in [`models/README.md`](models/README.md).
 
 ## Public API
 
 The intended adoption surface is small:
 
-- [`VisualDriver.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/driver/VisualDriver.java)
-- [`VisualHealingEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/VisualHealingEngine.java)
-- [`VisualHealingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/VisualHealingConfig.java)
-- [`EmbeddingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/EmbeddingConfig.java)
+- [`VisualDriver.java`](src/main/java/com/visual/driver/VisualDriver.java)
+- [`VisualHealingEngine.java`](src/main/java/com/visual/engine/VisualHealingEngine.java)
+- [`VisualHealingConfig.java`](src/main/java/com/visual/config/VisualHealingConfig.java)
+- [`EmbeddingConfig.java`](src/main/java/com/visual/config/EmbeddingConfig.java)
 
 Example:
 
@@ -247,9 +247,9 @@ Xealenium now uses one shared semantic pipeline instead of multiple drifting heu
 
 Core classes:
 
-- [`DomSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/DomSemanticProvider.java)
-- [`AccessibilityTreeSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/AccessibilityTreeSemanticProvider.java)
-- [`SemanticSignalExtractor.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/SemanticSignalExtractor.java)
+- [`DomSemanticProvider.java`](src/main/java/com/visual/semantic/DomSemanticProvider.java)
+- [`AccessibilityTreeSemanticProvider.java`](src/main/java/com/visual/semantic/AccessibilityTreeSemanticProvider.java)
+- [`SemanticSignalExtractor.java`](src/main/java/com/visual/semantic/SemanticSignalExtractor.java)
 
 Current signals:
 
@@ -263,11 +263,11 @@ Current signals:
 - parent context
 - input type
 
-Lexical matching is backed by [`SemanticSimilarity.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/SemanticSimilarity.java) and [`WordNetSemanticService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/WordNetSemanticService.java).
+Lexical matching is backed by [`SemanticSimilarity.java`](src/main/java/com/visual/semantic/SemanticSimilarity.java) and [`WordNetSemanticService.java`](src/main/java/com/visual/semantic/WordNetSemanticService.java).
 
 ## Smart Locator Builder
 
-[`SmartLocatorBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/locator/SmartLocatorBuilder.java) converts either a healed `WebElement` or a screen point into a stable Selenium locator.
+[`SmartLocatorBuilder.java`](src/main/java/com/visual/locator/SmartLocatorBuilder.java) converts either a healed `WebElement` or a screen point into a stable Selenium locator.
 
 Main steps:
 
@@ -307,8 +307,8 @@ Current verified setup:
 
 Core classes:
 
-- [`EmbeddingFingerprintBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/EmbeddingFingerprintBuilder.java)
-- [`LocalEmbeddingService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/LocalEmbeddingService.java)
+- [`EmbeddingFingerprintBuilder.java`](src/main/java/com/visual/embedding/EmbeddingFingerprintBuilder.java)
+- [`LocalEmbeddingService.java`](src/main/java/com/visual/embedding/LocalEmbeddingService.java)
 
 If the model is missing, Xealenium falls back to the deterministic scorer.
 
@@ -318,9 +318,9 @@ Review is now strategy-based rather than hardwired into the engine.
 
 Implementations:
 
-- [`ThresholdOnlyReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/ThresholdOnlyReviewStrategy.java)
-- [`AutoAcceptReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/AutoAcceptReviewStrategy.java)
-- [`SwingReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/SwingReviewStrategy.java)
+- [`ThresholdOnlyReviewStrategy.java`](src/main/java/com/visual/engine/ThresholdOnlyReviewStrategy.java)
+- [`AutoAcceptReviewStrategy.java`](src/main/java/com/visual/engine/AutoAcceptReviewStrategy.java)
+- [`SwingReviewStrategy.java`](src/main/java/com/visual/engine/SwingReviewStrategy.java)
 
 With `interactive=true`, Swing review shows:
 
@@ -356,8 +356,8 @@ These prove:
 
 If you want the benchmark-style setup pattern, see:
 
-- [`VisualPageMatrixTests.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/test/java/com/demo/benchmark/VisualPageMatrixTests.java)
-- [`HybridRecoveryModeTests.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/test/java/com/demo/benchmark/HybridRecoveryModeTests.java)
+- [`VisualPageMatrixTests.java`](src/test/java/com/demo/benchmark/VisualPageMatrixTests.java)
+- [`HybridRecoveryModeTests.java`](src/test/java/com/demo/benchmark/HybridRecoveryModeTests.java)
 
 ## Recommended Commands
 
@@ -382,5 +382,5 @@ If you want the benchmark-style setup pattern, see:
 
 ## More Documentation
 
-- [`docs/ARCHITECTURE.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/ARCHITECTURE.md)
-- [`docs/TEST_MATRIX.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/TEST_MATRIX.md)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/TEST_MATRIX.md`](docs/TEST_MATRIX.md)

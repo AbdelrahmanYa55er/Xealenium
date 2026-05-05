@@ -31,10 +31,10 @@ flowchart LR
 
 The intended public entry points are:
 
-- [`VisualDriver.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/driver/VisualDriver.java)
-- [`VisualHealingEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/VisualHealingEngine.java)
-- [`VisualHealingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/VisualHealingConfig.java)
-- [`EmbeddingConfig.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/config/EmbeddingConfig.java)
+- [`VisualDriver.java`](src/main/java/com/visual/driver/VisualDriver.java)
+- [`VisualHealingEngine.java`](src/main/java/com/visual/engine/VisualHealingEngine.java)
+- [`VisualHealingConfig.java`](src/main/java/com/visual/config/VisualHealingConfig.java)
+- [`EmbeddingConfig.java`](src/main/java/com/visual/config/EmbeddingConfig.java)
 
 System properties still work as a compatibility path, but config objects are now the preferred runtime API.
 
@@ -81,7 +81,7 @@ findElement(By...)
 
 ## VisualHealingEngine
 
-[`VisualHealingEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/VisualHealingEngine.java) is now a facade-orchestrator instead of a god class.
+[`VisualHealingEngine.java`](src/main/java/com/visual/engine/VisualHealingEngine.java) is now a facade-orchestrator instead of a god class.
 
 It coordinates:
 
@@ -99,31 +99,31 @@ It no longer owns all of those implementations directly.
 
 ### Baseline capture
 
-- [`BaselineCaptureService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/BaselineCaptureService.java)
-- [`BaselineStore.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/baseline/BaselineStore.java)
-- [`PageIdentityService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/baseline/PageIdentityService.java)
+- [`BaselineCaptureService.java`](src/main/java/com/visual/engine/BaselineCaptureService.java)
+- [`BaselineStore.java`](src/main/java/com/visual/baseline/BaselineStore.java)
+- [`PageIdentityService.java`](src/main/java/com/visual/baseline/PageIdentityService.java)
 
 ### Candidate collection and metadata
 
-- [`CandidateCollector.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/CandidateCollector.java)
-- [`CandidateMetadataCollector.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/CandidateMetadataCollector.java)
+- [`CandidateCollector.java`](src/main/java/com/visual/engine/CandidateCollector.java)
+- [`CandidateMetadataCollector.java`](src/main/java/com/visual/engine/CandidateMetadataCollector.java)
 
 ### Scoring and assignment
 
-- [`FieldAssignmentEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/FieldAssignmentEngine.java)
-- [`CandidateScorer.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/CandidateScorer.java)
-- [`HealingDecisionEngine.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/HealingDecisionEngine.java)
+- [`FieldAssignmentEngine.java`](src/main/java/com/visual/engine/FieldAssignmentEngine.java)
+- [`CandidateScorer.java`](src/main/java/com/visual/engine/CandidateScorer.java)
+- [`HealingDecisionEngine.java`](src/main/java/com/visual/engine/HealingDecisionEngine.java)
 
 ### Review strategies
 
-- [`ThresholdOnlyReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/ThresholdOnlyReviewStrategy.java)
-- [`AutoAcceptReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/AutoAcceptReviewStrategy.java)
-- [`SwingReviewStrategy.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/SwingReviewStrategy.java)
+- [`ThresholdOnlyReviewStrategy.java`](src/main/java/com/visual/engine/ThresholdOnlyReviewStrategy.java)
+- [`AutoAcceptReviewStrategy.java`](src/main/java/com/visual/engine/AutoAcceptReviewStrategy.java)
+- [`SwingReviewStrategy.java`](src/main/java/com/visual/engine/SwingReviewStrategy.java)
 
 ### Reporting
 
-- [`HealingReporter.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/engine/HealingReporter.java)
-- [`HeatmapRenderer.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/report/HeatmapRenderer.java)
+- [`HealingReporter.java`](src/main/java/com/visual/engine/HealingReporter.java)
+- [`HeatmapRenderer.java`](src/main/java/com/visual/report/HeatmapRenderer.java)
 
 ## Semantic Layer
 
@@ -131,10 +131,10 @@ The semantic layer is shared by both the healer and the locator builder.
 
 Core classes:
 
-- [`DomSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/DomSemanticProvider.java)
-- [`AccessibilityTreeSemanticProvider.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/AccessibilityTreeSemanticProvider.java)
-- [`SemanticSignalExtractor.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/SemanticSignalExtractor.java)
-- [`BrowserSemanticScripts.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/semantic/BrowserSemanticScripts.java)
+- [`DomSemanticProvider.java`](src/main/java/com/visual/semantic/DomSemanticProvider.java)
+- [`AccessibilityTreeSemanticProvider.java`](src/main/java/com/visual/semantic/AccessibilityTreeSemanticProvider.java)
+- [`SemanticSignalExtractor.java`](src/main/java/com/visual/semantic/SemanticSignalExtractor.java)
+- [`BrowserSemanticScripts.java`](src/main/java/com/visual/semantic/BrowserSemanticScripts.java)
 
 Signals include:
 
@@ -152,7 +152,7 @@ This shared pipeline is the single source of truth for DOM and semantic extracti
 
 ## Locator Layer
 
-[`SmartLocatorBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/locator/SmartLocatorBuilder.java) is responsible for:
+[`SmartLocatorBuilder.java`](src/main/java/com/visual/locator/SmartLocatorBuilder.java) is responsible for:
 
 - element normalization from points or nested wrappers
 - candidate selector generation
@@ -163,9 +163,9 @@ It does not own healing decisions.
 
 ## Embedding Layer
 
-[`EmbeddingFingerprintBuilder.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/EmbeddingFingerprintBuilder.java) builds the semantic fingerprint.
+[`EmbeddingFingerprintBuilder.java`](src/main/java/com/visual/embedding/EmbeddingFingerprintBuilder.java) builds the semantic fingerprint.
 
-[`LocalEmbeddingService.java`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/src/main/java/com/visual/embedding/LocalEmbeddingService.java) loads the local ONNX model and computes embeddings when enabled.
+[`LocalEmbeddingService.java`](src/main/java/com/visual/embedding/LocalEmbeddingService.java) loads the local ONNX model and computes embeddings when enabled.
 
 The embedding layer is isolated from reporting and UI.
 
@@ -190,4 +190,4 @@ They prove four claims:
 - Xealenium can recover harder semantic and structural drift
 - Xealenium can refuse unsafe guesses
 
-See [`TEST_MATRIX.md`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/TEST_MATRIX.md) for the scenario catalog.
+See [`TEST_MATRIX.md`](docs/TEST_MATRIX.md) for the scenario catalog.

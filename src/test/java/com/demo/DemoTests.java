@@ -5,6 +5,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,7 +23,7 @@ public class DemoTests {
         opts.addArguments("--remote-allow-origins=*", "--no-sandbox", "--start-maximized");
         chrome = new ChromeDriver(opts);
         driver = SelfHealingDriver.create(chrome);
-        testUrl = System.getProperty("testUrl", "file:///c:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/pages/baseline.html");
+        testUrl = System.getProperty("testUrl", Path.of(System.getProperty("user.dir"), "pages", "baseline.html").toAbsolutePath().toUri().toString());
     }
 
     private void slow() {}

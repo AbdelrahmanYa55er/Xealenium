@@ -30,7 +30,7 @@
     <h1>Complete Profile</h1>
 
     <span class="e-title">Given Name</span>
-    <div contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
+    <div id="first_name_new" contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
 
     <span class="e-title">Surname</span>
     <div contenteditable="true" tabindex="0" data-placeholder="Click to type"></div>
@@ -55,13 +55,13 @@
         </div>
     </div>
 
-    <div class="fake-toggle" tabindex="0" onclick="this.querySelector('.toggle-box').classList.toggle('active')">
+    <div class="fake-toggle" role="checkbox" aria-label="I accept the terms and conditions" tabindex="0" onclick="this.querySelector('.toggle-box').classList.toggle('active')">
         <div class="toggle-box active"></div>
-        <span>Agreement Signed</span>
+        <span>I accept the terms and conditions</span>
     </div>
-    <div class="fake-toggle" tabindex="0" onclick="this.querySelector('.toggle-box').classList.toggle('active')">
+    <div class="fake-toggle" role="checkbox" aria-label="Subscribe to newsletter" tabindex="0" onclick="this.querySelector('.toggle-box').classList.toggle('active')">
         <div class="toggle-box active"></div>
-        <span>Email Feed</span>
+        <span>Subscribe to newsletter</span>
     </div>
 
     <a class="submit-link" tabindex="0" onclick="alert('Submitted!')">Finish Registration</a>

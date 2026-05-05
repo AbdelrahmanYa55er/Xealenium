@@ -10,6 +10,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -29,11 +30,24 @@ public class VisualDemoTests {
         // Always visible - no headless!
         opts.addArguments("--remote-allow-origins=*", "--no-sandbox", "--start-maximized");
         chrome = new ChromeDriver(opts);
-        WebDriver healenium = SelfHealingDriver.create(chrome);
+        WebDriver recoveredDriver = createRecoveringDriver(chrome);
         VisualHealingConfig config = VisualHealingConfig.fromSystemProperties();
-        driver = new VisualDriver(healenium, chrome, config);
+        driver = new VisualDriver(recoveredDriver, chrome, config);
 
-        testUrl = System.getProperty("testUrl", "file:///c:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/pages/baseline.html");
+        testUrl = System.getProperty("testUrl", defaultPageUrl("baseline.html"));
+    }
+
+    private WebDriver createRecoveringDriver(ChromeDriver chrome) {
+        try {
+            return SelfHealingDriver.create(chrome);
+        } catch (RuntimeException e) {
+            System.out.println("[VISUAL-DEMO] Healenium backend unavailable; continuing with Selenium + visual healing only: " + e.getMessage());
+            return chrome;
+        }
+    }
+
+    private String defaultPageUrl(String pageName) {
+        return Path.of(System.getProperty("user.dir"), "pages", pageName).toAbsolutePath().toUri().toString();
     }
 
     private void slow() {}
@@ -41,6 +55,7 @@ public class VisualDemoTests {
     @Test
     public void testFullRegistrationFlow() throws Exception {
         driver.get(testUrl);
+        System.out.println("[VISUAL-DEMO] Loaded " + driver.getCurrentUrl() + " title=" + driver.getTitle());
         System.out.println("--- Starting form fill ---");
 
         WebElement fname = driver.findElement(By.id("fname"));

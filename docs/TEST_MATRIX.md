@@ -13,7 +13,7 @@
 - `semantic_signals.html`
   - focused semantic extraction and locator fixture
 
-The machine-readable matrix lives in [`benchmark-matrix.json`](/C:/Users/Hyper/.gemini/antigravity/scratch/healenium-tests/docs/benchmark-matrix.json).
+The machine-readable matrix lives in [`benchmark-matrix.json`](docs/benchmark-matrix.json).
 
 ## Scenario Matrix
 
