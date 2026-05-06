@@ -27,12 +27,15 @@ final class HealingDecisionEngine {
         if (!customStrategyActive) {
             setInteractiveMode(interactiveMode);
         }
+        System.out.println("[REVIEW] Active strategy for " + key + ": " + reviewStrategy.getClass().getSimpleName()
+            + " interactive=" + interactiveMode + " custom=" + customStrategyActive + " threshold=" + String.format("%.2f", threshold));
         return reviewStrategy.review(key, pageImg, heatCandidates, rankedCandidates, threshold);
     }
 
     void setInteractiveMode(boolean interactiveMode) {
         this.reviewStrategy = interactiveMode ? swingReviewStrategy : thresholdOnlyReviewStrategy;
         this.customStrategyActive = false;
+        System.out.println("[REVIEW] Interactive mode set to " + interactiveMode + " -> " + reviewStrategy.getClass().getSimpleName());
     }
 
     void setReviewStrategy(HealingReviewStrategy reviewStrategy) {

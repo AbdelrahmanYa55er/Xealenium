@@ -29,31 +29,34 @@ public final class EmbeddingConfig {
 
     public static EmbeddingConfig fromSystemProperties() {
         Builder builder = builder();
-        String explicit = System.getProperty("visual.embedding.enabled", "").trim();
+        String explicit = XealeniumRuntimeProperties.get("visual.embedding.enabled");
         if (!explicit.isBlank()) {
             builder.enabled(Boolean.parseBoolean(explicit));
         }
-        String modelDir = System.getProperty("visual.embedding.modelDir", "").trim();
+        String modelDir = XealeniumRuntimeProperties.get("visual.embedding.modelDir");
         if (!modelDir.isBlank()) {
             builder.modelDir(Path.of(modelDir));
         }
-        String modelFile = System.getProperty("visual.embedding.modelFile", "").trim();
+        String modelFile = XealeniumRuntimeProperties.get("visual.embedding.modelFile");
+        if (modelFile.isBlank()) {
+            modelFile = XealeniumRuntimeProperties.get("visual.embedding.modelPath");
+        }
         if (!modelFile.isBlank()) {
             builder.modelFile(Path.of(modelFile));
         }
-        String tokenizerFile = System.getProperty("visual.embedding.tokenizerFile", "").trim();
+        String tokenizerFile = XealeniumRuntimeProperties.get("visual.embedding.tokenizerFile");
         if (!tokenizerFile.isBlank()) {
             builder.tokenizerFile(Path.of(tokenizerFile));
         }
-        String maxLength = System.getProperty("visual.embedding.maxLength", "").trim();
+        String maxLength = XealeniumRuntimeProperties.get("visual.embedding.maxLength");
         if (!maxLength.isBlank()) {
             builder.maxLength(Integer.parseInt(maxLength));
         }
-        String modelName = System.getProperty("visual.embedding.modelName", "").trim();
+        String modelName = XealeniumRuntimeProperties.get("visual.embedding.modelName");
         if (!modelName.isBlank()) {
             builder.modelName(modelName);
         }
-        String pooling = System.getProperty("visual.embedding.pooling", "").trim();
+        String pooling = XealeniumRuntimeProperties.get("visual.embedding.pooling");
         if (!pooling.isBlank()) {
             builder.pooling(pooling);
         }

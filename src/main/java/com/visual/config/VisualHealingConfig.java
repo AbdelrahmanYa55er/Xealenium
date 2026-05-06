@@ -6,12 +6,14 @@ public final class VisualHealingConfig {
     private final Boolean captureBaseline;
     private final boolean refreshBaseline;
     private final boolean interactiveReview;
+    private final double threshold;
     private final EmbeddingConfig embeddingConfig;
 
     private VisualHealingConfig(Builder builder) {
         this.captureBaseline = builder.captureBaseline;
         this.refreshBaseline = builder.refreshBaseline;
         this.interactiveReview = builder.interactiveReview;
+        this.threshold = builder.threshold;
         this.embeddingConfig = builder.embeddingConfig == null
             ? EmbeddingConfig.builder().build()
             : builder.embeddingConfig;
@@ -23,12 +25,13 @@ public final class VisualHealingConfig {
 
     public static VisualHealingConfig fromSystemProperties() {
         Builder builder = builder();
-        String captureBaseline = System.getProperty("visual.captureBaseline", "").trim();
+        String captureBaseline = XealeniumRuntimeProperties.get("visual.captureBaseline");
         if (!captureBaseline.isBlank()) {
             builder.captureBaseline(Boolean.parseBoolean(captureBaseline));
         }
-        builder.refreshBaseline(Boolean.parseBoolean(System.getProperty("visual.captureBaseline.refresh", "false")));
-        builder.interactiveReview(Boolean.parseBoolean(System.getProperty("interactive", "false")));
+        builder.refreshBaseline(XealeniumRuntimeProperties.getBoolean("visual.captureBaseline.refresh", false));
+        builder.interactiveReview(XealeniumRuntimeProperties.getBoolean("interactive", false));
+        builder.threshold(XealeniumRuntimeProperties.getDouble("visual.threshold", 0.56));
         builder.embeddingConfig(EmbeddingConfig.fromSystemProperties());
         return builder.build();
     }
@@ -45,6 +48,10 @@ public final class VisualHealingConfig {
         return interactiveReview;
     }
 
+    public double getThreshold() {
+        return threshold;
+    }
+
     public EmbeddingConfig getEmbeddingConfig() {
         return embeddingConfig;
     }
@@ -59,19 +66,21 @@ public final class VisualHealingConfig {
         }
         return refreshBaseline == other.refreshBaseline
             && interactiveReview == other.interactiveReview
+            && Double.compare(threshold, other.threshold) == 0
             && Objects.equals(captureBaseline, other.captureBaseline)
             && Objects.equals(embeddingConfig, other.embeddingConfig);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(captureBaseline, refreshBaseline, interactiveReview, embeddingConfig);
+        return Objects.hash(captureBaseline, refreshBaseline, interactiveReview, threshold, embeddingConfig);
     }
 
     public static final class Builder {
         private Boolean captureBaseline;
         private boolean refreshBaseline;
         private boolean interactiveReview;
+        private double threshold = 0.56;
         private EmbeddingConfig embeddingConfig;
 
         public Builder captureBaseline(Boolean captureBaseline) {
@@ -86,6 +95,11 @@ public final class VisualHealingConfig {
 
         public Builder interactiveReview(boolean interactiveReview) {
             this.interactiveReview = interactiveReview;
+            return this;
+        }
+
+        public Builder threshold(double threshold) {
+            this.threshold = threshold;
             return this;
         }
 

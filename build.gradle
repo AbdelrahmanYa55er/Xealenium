@@ -1,9 +1,11 @@
 plugins {
     id 'java'
 }
+
 repositories {
     mavenCentral()
 }
+
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
@@ -25,22 +27,90 @@ dependencies {
     runtimeOnly 'net.sf.extjwnl:extjwnl-data-wn31:1.2'
     testRuntimeOnly 'net.sf.extjwnl:extjwnl-data-wn31:1.2'
 }
+
+def baselineUrl = file('pages/baseline.html').toURI().toString()
+def updatedUrl = file('pages/updated.html').toURI().toString()
+def profileBaselineUrl = file('pages/profile_baseline.html').toURI().toString()
+def profileUpdatedUrl = file('pages/profile_updated.html').toURI().toString()
+def embeddingModelPath = file('models/gte-small-onnx/model.onnx').path
+
 test {
     useJUnitPlatform()
-    systemProperty 'testUrl', System.getProperty('testUrl', file('pages/baseline.html').toURI().toString())
-    systemProperty 'interactive', System.getProperty('interactive', 'false')
-    systemProperty 'report', System.getProperty('report', 'true')
-    systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', '')
-    systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', 'false')
-    systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', 'true')
-    systemProperty 'visual.embedding.modelDir', System.getProperty('visual.embedding.modelDir', '')
-    systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', '')
-    systemProperty 'visual.embedding.tokenizerFile', System.getProperty('visual.embedding.tokenizerFile', '')
-    systemProperty 'visual.embedding.maxLength', System.getProperty('visual.embedding.maxLength', '128')
-    systemProperty 'visual.embedding.modelName', System.getProperty('visual.embedding.modelName', '')
-    systemProperty 'visual.embedding.pooling', System.getProperty('visual.embedding.pooling', '')
     testLogging {
         showStandardStreams = true
         events 'passed', 'skipped', 'failed'
     }
+}
+
+def configureXealeniumDemoTask = { task, taskName, pageUrl, captureBaseline, embeddingsEnabled, threshold ->
+    task.group = 'xealenium'
+    task.description = taskName
+    task.testClassesDirs = sourceSets.test.output.classesDirs
+    task.classpath = sourceSets.test.runtimeClasspath
+    task.useJUnitPlatform()
+    task.filter {
+        includeTestsMatching 'com.demo.VisualDemoTests'
+    }
+    task.systemProperty 'testUrl', System.getProperty('testUrl', pageUrl)
+    task.systemProperty 'interactive', System.getProperty('interactive', 'false')
+    task.systemProperty 'report', System.getProperty('report', 'true')
+    task.systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', String.valueOf(captureBaseline))
+    task.systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', String.valueOf(captureBaseline))
+    task.systemProperty 'visual.threshold', System.getProperty('visual.threshold', String.valueOf(threshold))
+    task.systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', String.valueOf(embeddingsEnabled))
+    task.systemProperty 'visual.embedding.modelName', System.getProperty('visual.embedding.modelName', embeddingsEnabled ? 'gte-small' : '')
+    task.systemProperty 'visual.embedding.modelPath', System.getProperty('visual.embedding.modelPath', embeddingsEnabled ? embeddingModelPath : '')
+    task.systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', embeddingsEnabled ? embeddingModelPath : '')
+    task.outputs.upToDateWhen { false }
+}
+
+tasks.register('captureBaseline', Test) {
+    configureXealeniumDemoTask(delegate, 'Capture baseline snapshots from pages/baseline.html.', baselineUrl, true, false, 0.56)
+}
+
+tasks.register('runHealing', Test) {
+    configureXealeniumDemoTask(delegate, 'Run healing against pages/updated.html.', updatedUrl, false, false, 0.56)
+}
+
+tasks.register('captureBaselineWithEmbeddings', Test) {
+    configureXealeniumDemoTask(delegate, 'Capture baseline snapshots from pages/baseline.html with local embeddings enabled.', baselineUrl, true, true, 0.70)
+}
+
+tasks.register('runHealingWithEmbeddings', Test) {
+    configureXealeniumDemoTask(delegate, 'Run healing against pages/updated.html with local embeddings enabled.', updatedUrl, false, true, 0.70)
+}
+
+def configureProfileCycleTask = { task, taskName, pageUrl, phase, captureBaseline, embeddingsEnabled, threshold ->
+    task.group = 'xealenium'
+    task.description = taskName
+    task.testClassesDirs = sourceSets.test.output.classesDirs
+    task.classpath = sourceSets.test.runtimeClasspath
+    task.useJUnitPlatform()
+    task.filter {
+        includeTestsMatching 'com.demo.profile.ProfileHealingCycleTests'
+    }
+    task.systemProperty 'profile.phase', phase
+    task.systemProperty 'testUrl', System.getProperty('testUrl', pageUrl)
+    task.systemProperty 'interactive', System.getProperty('interactive', 'false')
+    task.systemProperty 'report', System.getProperty('report', 'true')
+    task.systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', String.valueOf(captureBaseline))
+    task.systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', String.valueOf(captureBaseline))
+    task.systemProperty 'visual.threshold', System.getProperty('visual.threshold', String.valueOf(threshold))
+    task.systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', String.valueOf(embeddingsEnabled))
+    task.systemProperty 'visual.embedding.modelName', System.getProperty('visual.embedding.modelName', embeddingsEnabled ? 'gte-small' : '')
+    task.systemProperty 'visual.embedding.modelPath', System.getProperty('visual.embedding.modelPath', embeddingsEnabled ? embeddingModelPath : '')
+    task.systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', embeddingsEnabled ? embeddingModelPath : '')
+    task.outputs.upToDateWhen { false }
+}
+
+tasks.register('profileCaptureBaseline', Test) {
+    configureProfileCycleTask(delegate, 'Capture profile scenario baseline snapshots from pages/profile_baseline.html.', profileBaselineUrl, 'capture', true, false, 0.56)
+}
+
+tasks.register('profileRunHealing', Test) {
+    configureProfileCycleTask(delegate, 'Run profile scenario healing against pages/profile_updated.html.', profileUpdatedUrl, 'healing', false, false, 0.56)
+}
+
+tasks.register('profileRunHealingWithEmbeddings', Test) {
+    configureProfileCycleTask(delegate, 'Run profile scenario healing against pages/profile_updated.html with local embeddings enabled.', profileUpdatedUrl, 'healing', false, true, 0.70)
 }

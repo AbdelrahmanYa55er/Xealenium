@@ -1,6 +1,7 @@
 package com.demo;
 
 import com.epam.healenium.SelfHealingDriver;
+import com.visual.config.XealeniumRuntimeProperties;
 import com.visual.config.VisualHealingConfig;
 import com.visual.driver.VisualDriver;
 import com.visual.engine.VisualHealingEngine;
@@ -26,6 +27,16 @@ public class VisualDemoTests {
 
     @BeforeEach
     public void setUp() {
+        XealeniumRuntimeProperties.applyToSystemProperties(
+            "report",
+            "interactive",
+            "visual.captureBaseline",
+            "visual.captureBaseline.refresh",
+            "visual.threshold",
+            "visual.embedding.enabled",
+            "visual.embedding.modelName",
+            "visual.embedding.modelPath"
+        );
         ChromeOptions opts = new ChromeOptions();
         // Always visible - no headless!
         opts.addArguments("--remote-allow-origins=*", "--no-sandbox", "--start-maximized");
@@ -34,7 +45,7 @@ public class VisualDemoTests {
         VisualHealingConfig config = VisualHealingConfig.fromSystemProperties();
         driver = new VisualDriver(recoveredDriver, chrome, config);
 
-        testUrl = System.getProperty("testUrl", defaultPageUrl("baseline.html"));
+        testUrl = System.getProperty("testUrl", defaultPageUrlForConfiguredPage());
     }
 
     private WebDriver createRecoveringDriver(ChromeDriver chrome) {
@@ -48,6 +59,15 @@ public class VisualDemoTests {
 
     private String defaultPageUrl(String pageName) {
         return Path.of(System.getProperty("user.dir"), "pages", pageName).toAbsolutePath().toUri().toString();
+    }
+
+    private String defaultPageUrlForConfiguredPage() {
+        String configuredPage = XealeniumRuntimeProperties.get("test.page", "updated").trim().toLowerCase();
+        return switch (configuredPage) {
+            case "baseline", "baseline.html" -> defaultPageUrl("baseline.html");
+            case "updated", "updated.html" -> defaultPageUrl("updated.html");
+            default -> defaultPageUrl(configuredPage.endsWith(".html") ? configuredPage : configuredPage + ".html");
+        };
     }
 
     private void slow() {}
@@ -117,7 +137,7 @@ public class VisualDemoTests {
 
     @AfterAll
     public static void generateReport() {
-        if (Boolean.parseBoolean(System.getProperty("report", "true"))) {
+        if (XealeniumRuntimeProperties.getBoolean("report", true)) {
             VisualHealingEngine.generateHtmlReport("visual-healing-report.html");
         }
     }

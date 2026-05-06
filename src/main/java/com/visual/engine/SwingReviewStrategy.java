@@ -67,6 +67,7 @@ final class SwingReviewStrategy implements HealingReviewStrategy {
             dialog.setAlwaysOnTop(true);
             dialog.setModal(true);
             dialog.setResizable(true);
+            System.out.println("[INTERACTIVE] Opening Swing review dialog for " + key + " candidate=" + candidate.getSelector());
             dialog.setVisible(true);
 
             Object selectedValue = pane.getValue();

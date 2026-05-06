@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile Baseline Page</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f3f6fb;
+            color: #172033;
+            margin: 0;
+            padding: 40px 18px;
+        }
+        .profile-card {
+            max-width: 620px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #dbe3ef;
+            border-radius: 8px;
+            padding: 28px;
+            box-shadow: 0 8px 28px rgba(22, 38, 64, 0.12);
+        }
+        h1 {
+            margin: 0 0 22px;
+            font-size: 26px;
+        }
+        .field {
+            margin-bottom: 14px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #34425c;
+        }
+        input,
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 40px;
+            border: 1px solid #b9c5d6;
+            border-radius: 6px;
+            padding: 9px 10px;
+            font-size: 14px;
+            background: #ffffff;
+        }
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: 14px 0;
+        }
+        .check-row input {
+            width: 18px;
+            min-height: 18px;
+        }
+        .check-row label {
+            margin: 0;
+        }
+        button {
+            width: 100%;
+            min-height: 44px;
+            margin-top: 18px;
+            border: 0;
+            border-radius: 6px;
+            background: #2563eb;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<main class="profile-card" aria-labelledby="profile-title">
+    <h1 id="profile-title">Profile Settings</h1>
+
+    <div class="field">
+        <label for="fullName">Full Name</label>
+        <input id="fullName" type="text" autocomplete="name" placeholder="Alex Morgan">
+    </div>
+
+    <div class="field">
+        <label for="userEmail">Email Address</label>
+        <input id="userEmail" type="email" autocomplete="email" placeholder="alex@example.com">
+    </div>
+
+    <div class="field">
+        <label for="mobileNumber">Mobile Number</label>
+        <input id="mobileNumber" type="tel" autocomplete="tel" placeholder="+1 555 0100">
+    </div>
+
+    <div class="field">
+        <label for="jobTitle">Job Title</label>
+        <input id="jobTitle" type="text" autocomplete="organization-title" placeholder="Product Manager">
+    </div>
+
+    <div class="field">
+        <label for="department">Department</label>
+        <select id="department" aria-label="Department">
+            <option>Engineering</option>
+            <option>Product</option>
+            <option>Support</option>
+            <option>Operations</option>
+        </select>
+    </div>
+
+    <div class="check-row">
+        <input id="notifications" type="checkbox">
+        <label for="notifications">Enable notifications</label>
+    </div>
+
+    <div class="check-row">
+        <input id="twoFactor" type="checkbox">
+        <label for="twoFactor">Enable two-factor authentication</label>
+    </div>
+
+    <button id="saveProfileBtn" type="submit">Save Profile</button>
+</main>
+</body>
+</html>

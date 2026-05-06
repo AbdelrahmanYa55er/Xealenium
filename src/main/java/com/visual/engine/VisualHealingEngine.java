@@ -25,7 +25,6 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 
 public class VisualHealingEngine {
-    private static final double THR=0.56;
     private final BaselineStore store;
     private final SemanticSignalExtractor semanticExtractor;
     private final LocalEmbeddingService embeddingService;
@@ -59,7 +58,7 @@ public class VisualHealingEngine {
         baselineCaptureService = new BaselineCaptureService(store, semanticExtractor, embeddingService, candidateCollector);
         fieldAssignmentEngine = new FieldAssignmentEngine(store, embeddingService);
         candidateScorer = new CandidateScorer(candidateCollector, embeddingService, fieldAssignmentEngine);
-        healingDecisionEngine = new HealingDecisionEngine(THR);
+        healingDecisionEngine = new HealingDecisionEngine(this.config.getThreshold());
         pageIdentityService = new PageIdentityService();
         setInteractiveMode(this.config.isInteractiveReview());
     }
