@@ -404,10 +404,15 @@ public final class BrowserSemanticScripts {
     }
 
     public static String locatorExtractionScript(String startExpression) {
+        return locatorExtractionScript(startExpression, true);
+    }
+
+    public static String locatorExtractionScript(String startExpression, boolean normalizeStart) {
+        String targetExpression = normalizeStart ? "normalizeMeaningfulElement(start)" : "start";
         return (COMMON_HELPERS + """
             var start = %s;
             if (!start) return null;
-            var target = normalizeMeaningfulElement(start);
+            var target = %s;
             var ancestor = nearestStableAncestor(target);
             var labelText = primaryContextualLabelText(target);
             var role = computedRole(target);
@@ -434,7 +439,7 @@ public final class BrowserSemanticScripts {
               ancestorClassName: ancestor.className,
               ancestorTagName: ancestor.tagName
             }];
-            """).formatted(startExpression);
+            """).formatted(startExpression, targetExpression);
     }
 
     public static String visualCandidateCollectionScript() {

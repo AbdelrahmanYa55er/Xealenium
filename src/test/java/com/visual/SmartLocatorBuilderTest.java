@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -44,15 +45,14 @@ public class SmartLocatorBuilderTest {
     }
 
     @Test
-    void idPriorityWinsForStableUniqueId() {
+    void uniqueIdSelectorIsSelectedAsLowRisk() {
         driver.get(htmlUrl("""
-            <div id="first_name_new" contenteditable="true"></div>
+            <input id="email_new" type="email">
             """));
 
-        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("first_name_new")));
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("email_new")));
 
-        assertEquals("css", result.getLocatorType());
-        assertEquals("#first_name_new", result.getLocator());
+        assertSelected(result, "css", "#email_new");
         assertEquals("id", result.getStrategy());
         assertEquals(SmartLocatorResult.RiskLevel.LOW, result.getSelectedRiskLevel());
         assertTrue(result.getSelectedReason().toLowerCase().contains("id"));
@@ -60,64 +60,573 @@ public class SmartLocatorBuilderTest {
     }
 
     @Test
-    void testAttributePriorityBeatsBroaderLocators() {
+    void dataTestIdSelectorIsSelectedBeforeXPath() {
         driver.get(htmlUrl("""
-            <div data-testid="last-name" contenteditable="true"></div>
+            <input data-testid="email-field" type="email">
             """));
 
-        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[data-testid='last-name']")));
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[data-testid='email-field']")));
 
-        assertEquals("css", result.getLocatorType());
-        assertEquals("[data-testid='last-name']", result.getLocator());
+        assertSelected(result, "css", "[data-testid='email-field']");
+        assertEquals(SmartLocatorResult.RiskLevel.LOW, result.getSelectedRiskLevel());
+        assertTrue(reasonContains(result, "data-testid") || reasonContains(result, "stable test attribute"));
+        assertFalse("xpath".equals(result.getLocatorType()));
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void dataQaSelectorIsSelectedAsLowRisk() {
+        driver.get(htmlUrl("""
+            <button data-qa="save-profile">Save</button>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[data-qa='save-profile']")));
+
+        assertSelected(result, "css", "[data-qa='save-profile']");
         assertEquals(SmartLocatorResult.RiskLevel.LOW, result.getSelectedRiskLevel());
         assertUnique(result, driver);
     }
 
     @Test
-    void ariaLabelPrioritySelectsAccessibleCssLocator() {
+    void additionalStableTestAttributesAreSelectedAsLowRisk() {
+        assertSelectedLocatorForHtml("""
+            <input data-test="email-field">
+            """, "[data-test='email-field']", "css", "[data-test='email-field']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <button data-cy="save-profile">Save</button>
+            """, "[data-cy='save-profile']", "css", "[data-cy='save-profile']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <button data-automation="save-profile">Save</button>
+            """, "[data-automation='save-profile']", "css", "[data-automation='save-profile']", SmartLocatorResult.RiskLevel.LOW);
+    }
+
+    @Test
+    void ariaLabelButtonSelectorIsSelectedAsLowRisk() {
         driver.get(htmlUrl("""
-            <div role="checkbox" aria-label="Subscribe to newsletter"></div>
+            <button aria-label="Save profile"></button>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("button")));
+
+        assertSelected(result, "css", "[aria-label='Save profile']");
+        assertEquals(SmartLocatorResult.RiskLevel.LOW, result.getSelectedRiskLevel());
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void ariaCheckboxSelectorIsSelectedAsLowRisk() {
+        driver.get(htmlUrl("""
+            <div role="checkbox" aria-label="Subscribe to newsletter" tabindex="0"></div>
             """));
 
         SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[aria-label='Subscribe to newsletter']")));
 
         assertEquals("css", result.getLocatorType());
-        assertTrue(result.getLocator().contains("aria-label='Subscribe to newsletter'"));
+        assertTrue(List.of(
+            "[role='checkbox'][aria-label='Subscribe to newsletter']",
+            "[aria-label='Subscribe to newsletter']"
+        ).contains(result.getLocator()));
         assertEquals(SmartLocatorResult.RiskLevel.LOW, result.getSelectedRiskLevel());
+        assertTrue(reasonContains(result, "aria"));
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void ariaLabelledBySelectorIsSupportedAndExplainable() {
+        driver.get(htmlUrl("""
+            <span id="emailLabel">Email Address</span>
+            <input aria-labelledby="emailLabel">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[aria-labelledby='emailLabel']")));
+
+        assertSelected(result, "css", "[aria-labelledby='emailLabel']");
+        assertEquals(SmartLocatorResult.RiskLevel.LOW, result.getSelectedRiskLevel());
+        assertTrue(reasonContains(result, "aria-labelledby"));
+        assertEquals("Email Address", result.getAccessibleName());
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void nameAttributeSelectorIsSelectedWithExplainableRisk() {
+        driver.get(htmlUrl("""
+            <input name="userEmail" type="email">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[name='userEmail']")));
+
+        assertSelected(result, "css", "[name='userEmail']");
+        assertTrue(result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.LOW
+            || result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.MEDIUM);
+        assertTrue(reasonContains(result, "name"));
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void genericNameDoesNotBeatAriaLabel() {
+        driver.get(htmlUrl("""
+            <input name="field" aria-label="Email">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[name='field']")));
+
+        assertSelected(result, "css", "[aria-label='Email']");
+        assertCandidate(result, "css", "[name='field']");
+        assertTrue(candidateRank(result, "[aria-label='Email']") < candidateRank(result, "[name='field']"));
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void uniqueInputTypeSelectorIsDowngradedFromLowRisk() {
+        driver.get(htmlUrl("""
+            <input type="email">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("input[type='email']")));
+
+        assertSelected(result, "css", "input[type='email']");
+        assertTrue(result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.MEDIUM
+            || result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.HIGH);
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void nonUniqueInputTypeCandidateIsNotLowRiskSafe() {
+        driver.get(htmlUrl("""
+            <input type="email">
+            <input type="email">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElements(By.cssSelector("input[type='email']")).get(0));
+        SmartLocatorResult.LocatorCandidate typeCandidate = candidateOrNull(result, "input[type='email']");
+
+        assertNotNull(typeCandidate);
+        assertFalse(typeCandidate.isUnique());
+        assertEquals(SmartLocatorResult.RiskLevel.HIGH, typeCandidate.getRiskLevel());
+        assertFalse("input[type='email']".equals(result.getLocator())
+            && result.getSelectedRiskLevel() != SmartLocatorResult.RiskLevel.HIGH);
+    }
+
+    @Test
+    void generatedAndUtilityClassesDoNotBeatAriaLabel() {
+        assertSelectedLocatorForHtml("""
+            <input class="MuiInputBase-input" aria-label="Email">
+            """, ".MuiInputBase-input", "css", "[aria-label='Email']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <button class="css-1abcxyz" aria-label="Save"></button>
+            """, ".css-1abcxyz", "css", "[aria-label='Save']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <button class="sc-kpDqfm" aria-label="Save"></button>
+            """, ".sc-kpDqfm", "css", "[aria-label='Save']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <button class="flex p-2 mt-4 text-sm" aria-label="Save"></button>
+            """, "button", "css", "[aria-label='Save']", SmartLocatorResult.RiskLevel.LOW);
+    }
+
+    @Test
+    void basicLabelBasedXPathUsesLabelTagAndInputTarget() {
+        driver.get(htmlUrl("""
+            <label>Email Address</label><input>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("input")));
+
+        assertSelected(result, "xpath", "//label[normalize-space()='Email Address']/following-sibling::input[self::input][1]");
+        assertEquals(SmartLocatorResult.RiskLevel.MEDIUM, result.getSelectedRiskLevel());
+        assertTrue(reasonContains(result, "label-based"));
         assertUnique(result, driver);
     }
 
     @Test
     void contenteditableAfterSpanTitleUsesSpecificContextXPath() {
-        driver.get(pageUrl("updated.html"));
+        driver.get(htmlUrl("""
+            <div class="form-card">
+              <span class="e-title">Surname</span>
+              <div contenteditable="true" tabindex="0"></div>
+            </div>
+            """));
 
-        WebElement surname = driver.findElements(By.cssSelector("div[contenteditable='true']")).get(1);
+        WebElement surname = driver.findElement(By.cssSelector("div[contenteditable='true']"));
         SmartLocatorResult result = builder.buildLocatorForElement(surname);
 
         String expected = "//div[contains(@class,'form-card')]//span[contains(@class,'e-title') and normalize-space()='Surname']/following-sibling::div[@contenteditable='true'][1]";
-        assertEquals("xpath", result.getLocatorType());
-        assertEquals(expected, result.getLocator());
+        assertSelected(result, "xpath", expected);
         assertEquals("label-based", result.getStrategy());
         assertEquals(SmartLocatorResult.RiskLevel.MEDIUM, result.getSelectedRiskLevel());
         assertTrue(result.getSelectedReason().contains("label-based"));
+        assertTrue(result.getSelectedReason().contains("contenteditable"));
+        assertNotEqualsTrimmed(
+            "//*[self::label or self::span or self::div][normalize-space()='Surname']/following-sibling::*[@contenteditable='true'][1]",
+            result.getLocator());
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void classicSelectAndNativeCheckboxUseStableIds() {
+        assertSelectedLocatorForHtml("""
+            <select id="department"></select>
+            """, "#department", "css", "#department", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <input type="checkbox" id="terms">
+            """, "#terms", "css", "#terms", SmartLocatorResult.RiskLevel.LOW);
+    }
+
+    @Test
+    void customRoleControlsPreferRoleAriaLocator() {
+        assertSelectedLocatorForHtml("""
+            <div role="combobox" aria-label="Department"></div>
+            """, "[role='combobox']", "css", "[role='combobox'][aria-label='Department']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <div role="checkbox" aria-label="I accept terms"></div>
+            """, "[role='checkbox']", "css", "[role='checkbox'][aria-label='I accept terms']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <div role="switch" aria-label="Enable notifications"></div>
+            """, "[role='switch']", "css", "[role='switch'][aria-label='Enable notifications']", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <div role="button" aria-label="Submit"></div>
+            """, "[role='button']", "css", "[role='button'][aria-label='Submit']", SmartLocatorResult.RiskLevel.LOW);
+    }
+
+    @Test
+    void nativeRadioUsesMeaningfulNameLocator() {
+        driver.get(htmlUrl("""
+            <input type="radio" name="gender" value="male">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("input[type='radio']")));
+
+        assertSelected(result, "css", "[name='gender']");
+        assertTrue(reasonContains(result, "name"));
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void buttonTextUsesTagSpecificActionXPath() {
+        driver.get(htmlUrl("""
+            <button>Save Profile</button>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("button")));
+
+        assertSelected(result, "xpath", "//button[normalize-space()='Save Profile']");
+        assertTrue(reasonContains(result, "text"));
         assertUnique(result, driver);
     }
 
     @Test
     void submitLinkUsesSpecificTextActionLocator() {
-        driver.get(pageUrl("updated.html"));
+        driver.get(htmlUrl("""
+            <a class="submit-link" tabindex="0">Update Account</a>
+            """));
 
         SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("a.submit-link")));
 
-        assertTrue(
-            "css".equals(result.getLocatorType()) || "xpath".equals(result.getLocatorType()),
-            "expected css or xpath selector");
-        assertTrue(
-            "a.submit-link".equals(result.getLocator())
-                || "//a[contains(@class,'submit-link') and normalize-space()='Finish Registration']".equals(result.getLocator()));
+        assertSelected(result, "xpath", "//a[contains(@class,'submit-link') and normalize-space()='Update Account']");
+        assertTrue(reasonContains(result, "text action") || reasonContains(result, "action locator")
+            || reasonContains(result, "text-based action"));
         assertTrue(result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.LOW
             || result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.MEDIUM);
         assertUnique(result, driver);
+    }
+
+    @Test
+    void buttonTextNormalizesWhitespaceInXPath() {
+        driver.get(htmlUrl("""
+            <button>
+               Save
+               Profile
+            </button>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("button")));
+
+        assertSelected(result, "xpath", "//button[normalize-space()='Save Profile']");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void idSelectorBeatsDataTestIdButKeepsDataTestIdCandidate() {
+        driver.get(htmlUrl("""
+            <input id="first_name_new" data-testid="first-name-field">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("first_name_new")));
+
+        assertSelected(result, "css", "#first_name_new");
+        assertCandidate(result, "css", "[data-testid='first-name-field']");
+        assertTrue(candidateRank(result, "#first_name_new") < candidateRank(result, "[data-testid='first-name-field']"));
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void stableSemanticIdIsStillSelectedBeforeAriaLabel() {
+        driver.get(htmlUrl("""
+            <input id="email_new" aria-label="Email Address">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("email_new")));
+
+        assertSelected(result, "css", "#email_new");
+        assertEquals(SmartLocatorResult.RiskLevel.LOW, result.getSelectedRiskLevel());
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void muiGeneratedIdDoesNotBeatAriaLabel() {
+        driver.get(htmlUrl("""
+            <input id="mui-123" aria-label="Email Address">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("mui-123")));
+
+        assertSelected(result, "css", "[aria-label='Email Address']");
+        assertGeneratedIdCandidateIsHighRiskIfPresent(result, "#mui-123");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void materialGeneratedIdDoesNotBeatDataTestId() {
+        driver.get(htmlUrl("""
+            <input id="mat-input-17" data-testid="email-field">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("mat-input-17")));
+
+        assertSelected(result, "css", "[data-testid='email-field']");
+        assertGeneratedIdCandidateIsHighRiskIfPresent(result, "#mat-input-17");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void reactSelectGeneratedIdIsDowngraded() {
+        driver.get(htmlUrl("""
+            <input id="react-select-5-input" aria-label="Country">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("react-select-5-input")));
+
+        assertSelected(result, "css", "[aria-label='Country']");
+        assertGeneratedIdCandidateIsHighRiskIfPresent(result, "#react-select-5-input");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void reactUseIdStyleIdIsDowngraded() {
+        driver.get(htmlUrl("""
+            <input id=":r3:" aria-label="Search">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id(":r3:")));
+
+        assertSelected(result, "css", "[aria-label='Search']");
+        assertGeneratedIdCandidateIsHighRiskIfPresent(result, "[id=':r3:']");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void emberGeneratedIdIsDowngradedBelowName() {
+        driver.get(htmlUrl("""
+            <input id="ember421" name="username">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("ember421")));
+
+        assertSelected(result, "css", "[name='username']");
+        assertGeneratedIdCandidateIsHighRiskIfPresent(result, "#ember421");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void stableNumericSemanticIdIsNotFalselyRejected() {
+        assertSelectedLocatorForHtml("""
+            <input id="addressLine1" aria-label="Address Line 1">
+            """, "#addressLine1", "css", "#addressLine1", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <input id="phone2" aria-label="Phone 2">
+            """, "#phone2", "css", "#phone2", SmartLocatorResult.RiskLevel.LOW);
+
+        assertSelectedLocatorForHtml("""
+            <button id="step1Submit">Submit</button>
+            """, "#step1Submit", "css", "#step1Submit", SmartLocatorResult.RiskLevel.LOW);
+    }
+
+    @Test
+    void uuidLikeIdIsDowngradedBelowAriaLabel() {
+        driver.get(htmlUrl("""
+            <input id="f47ac10b-58cc-4372-a567-0e02b2c3d479" aria-label="Email">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("f47ac10b-58cc-4372-a567-0e02b2c3d479")));
+
+        assertSelected(result, "css", "[aria-label='Email']");
+        assertGeneratedIdCandidateIsHighRiskIfPresent(result, "#f47ac10b-58cc-4372-a567-0e02b2c3d479");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void longRandomHexLikeIdIsDowngradedBelowAriaLabel() {
+        driver.get(htmlUrl("""
+            <input id="a8f31c9d77e24591" aria-label="Phone">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("a8f31c9d77e24591")));
+
+        assertSelected(result, "css", "[aria-label='Phone']");
+        assertGeneratedIdCandidateIsHighRiskIfPresent(result, "#a8f31c9d77e24591");
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void generatedIdCandidateMetadataExplainsDowngradeWhenPresent() {
+        driver.get(htmlUrl("""
+            <input id="mui-123" aria-label="Email Address">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("mui-123")));
+        SmartLocatorResult.LocatorCandidate generatedId = candidateOrNull(result, "#mui-123");
+
+        assertFalse(result.getCandidates().isEmpty());
+        if (generatedId != null) {
+            assertEquals(SmartLocatorResult.RiskLevel.HIGH, generatedId.getRiskLevel());
+            assertTrue(candidateReasonContains(generatedId, "generated")
+                || candidateReasonContains(generatedId, "unstable"));
+        } else {
+            assertTrue(result.getLogs().stream().anyMatch(log ->
+                log.toLowerCase().contains("mui-123") && (
+                    log.toLowerCase().contains("generated")
+                        || log.toLowerCase().contains("unstable")
+                        || log.toLowerCase().contains("dynamic"))));
+        }
+    }
+
+    @Test
+    void dataTestIdBeatsLabelBasedXPathWhenBothExist() {
+        driver.get(htmlUrl("""
+            <div class="form-card">
+              <span class="e-title">Email</span>
+              <input data-testid="email-field" type="email">
+            </div>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("[data-testid='email-field']")));
+
+        assertSelected(result, "css", "[data-testid='email-field']");
+        assertTrue(result.getCandidates().stream().anyMatch(candidate ->
+            "xpath".equals(candidate.getType()) && candidate.getReason().contains("label-based")));
+        assertUnique(result, driver);
+    }
+
+    @Test
+    void duplicateLabelsDoNotSelectBroadUnsafeLocatorAsLowOrMediumRisk() {
+        driver.get(htmlUrl("""
+            <div class="form-card">
+              <span class="e-title">Email</span>
+              <div contenteditable="true"></div>
+            </div>
+            <div class="form-card">
+              <span class="e-title">Email</span>
+              <div contenteditable="true"></div>
+            </div>
+            """));
+
+        WebElement target = driver.findElements(By.cssSelector("div[contenteditable='true']")).get(0);
+        SmartLocatorResult result = builder.buildLocatorForElement(target);
+
+        assertEquals(SmartLocatorResult.RiskLevel.HIGH, result.getSelectedRiskLevel());
+        assertTrue(reasonContains(result, "fallback"));
+        assertFalse(result.getCandidates().isEmpty());
+        assertTrue(result.getCandidates().stream().allMatch(candidate -> candidate.getRiskLevel() != null));
+        assertTrue(result.getCandidates().stream().anyMatch(candidate ->
+            !candidate.isUnique() && candidate.getReason().contains("non-unique")));
+    }
+
+    @Test
+    void candidateListIsRankedAndExplainable() {
+        driver.get(htmlUrl("""
+            <form class="form-card">
+              <span class="e-title">Email</span>
+              <input id="email_new" name="userEmail" data-testid="email-field" type="email" aria-label="Primary email">
+            </form>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.id("email_new")));
+
+        assertFalse(result.getSelectedLocator().isBlank());
+        assertFalse(result.getSelectedReason().isBlank());
+        assertNotNull(result.getSelectedRiskLevel());
+        assertFalse(result.getCandidates().isEmpty());
+        for (int index = 0; index < result.getCandidates().size(); index++) {
+            SmartLocatorResult.LocatorCandidate candidate = result.getCandidates().get(index);
+            assertEquals(index + 1, candidate.getRank());
+            assertFalse(candidate.getValue().isBlank());
+            assertFalse(candidate.getReason().isBlank());
+            assertNotNull(candidate.getRiskLevel());
+        }
+    }
+
+    @Test
+    void quoteEscapingKeepsGeneratedLocatorValid() {
+        driver.get(htmlUrl("""
+            <button aria-label="Save user's profile"></button>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("button")));
+
+        assertDoesNotThrow(() -> driver.findElements(byFor(result)));
+        assertFalse(driver.findElements(byFor(result)).isEmpty());
+    }
+
+    @Test
+    void doubleQuoteEscapingKeepsGeneratedLocatorValid() {
+        driver.get(htmlUrl("""
+            <button aria-label='Save "admin" profile'></button>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("button")));
+
+        assertSelected(result, "css", "[aria-label='Save \"admin\" profile']");
+        assertDoesNotThrow(() -> driver.findElements(byFor(result)));
+        assertFalse(driver.findElements(byFor(result)).isEmpty());
+    }
+
+    @Test
+    void hiddenDuplicateKeepsSharedSelectorUnsafeUntilVisibilityFilteringExists() {
+        driver.get(htmlUrl("""
+            <input aria-label="Email" hidden>
+            <input aria-label="Email">
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElements(By.cssSelector("[aria-label='Email']")).get(1));
+        SmartLocatorResult.LocatorCandidate ariaCandidate = candidateOrNull(result, "[aria-label='Email']");
+
+        assertNotNull(ariaCandidate);
+        assertFalse(ariaCandidate.isUnique());
+        assertEquals(SmartLocatorResult.RiskLevel.HIGH, ariaCandidate.getRiskLevel());
+        assertFalse("[aria-label='Email']".equals(result.getLocator())
+            && result.getSelectedRiskLevel() != SmartLocatorResult.RiskLevel.HIGH);
+    }
+
+    @Test
+    void noGoodAttributesUseHighRiskFallback() {
+        driver.get(htmlUrl("""
+            <div class="unknown-control"></div>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector(".unknown-control")));
+
+        assertEquals(SmartLocatorResult.RiskLevel.HIGH, result.getSelectedRiskLevel());
+        assertTrue(reasonContains(result, "fallback"));
+        assertFalse(result.getLocator().isBlank());
     }
 
     @Test
@@ -209,11 +718,68 @@ public class SmartLocatorBuilderTest {
     }
 
     private static void assertUnique(SmartLocatorResult result, WebDriver driver) {
-        By by = "xpath".equals(result.getLocatorType())
+        List<WebElement> matches = driver.findElements(byFor(result));
+        assertEquals(1, matches.size(), "locator must be unique");
+    }
+
+    private static By byFor(SmartLocatorResult result) {
+        return "xpath".equals(result.getLocatorType())
             ? By.xpath(result.getLocator())
             : By.cssSelector(result.getLocator());
-        List<WebElement> matches = driver.findElements(by);
-        assertEquals(1, matches.size(), "locator must be unique");
+    }
+
+    private static void assertSelected(SmartLocatorResult result, String type, String locator) {
+        assertEquals(type, result.getLocatorType());
+        assertEquals(locator, result.getLocator());
+    }
+
+    private static void assertCandidate(SmartLocatorResult result, String type, String locator) {
+        assertTrue(result.getCandidates().stream().anyMatch(candidate ->
+            type.equals(candidate.getType()) && locator.equals(candidate.getValue())),
+            "expected candidate " + type + "=" + locator + " in " + result.getCandidates());
+    }
+
+    private void assertSelectedLocatorForHtml(String body, String targetSelector, String expectedType,
+                                              String expectedLocator, SmartLocatorResult.RiskLevel expectedRisk) {
+        driver.get(htmlUrl(body));
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector(targetSelector)));
+
+        assertSelected(result, expectedType, expectedLocator);
+        assertEquals(expectedRisk, result.getSelectedRiskLevel());
+        assertUnique(result, driver);
+    }
+
+    private static int candidateRank(SmartLocatorResult result, String locator) {
+        return result.getCandidates().stream()
+            .filter(candidate -> locator.equals(candidate.getValue()))
+            .mapToInt(SmartLocatorResult.LocatorCandidate::getRank)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Missing candidate " + locator));
+    }
+
+    private static boolean reasonContains(SmartLocatorResult result, String expected) {
+        return result.getSelectedReason().toLowerCase().contains(expected.toLowerCase());
+    }
+
+    private static void assertGeneratedIdCandidateIsHighRiskIfPresent(SmartLocatorResult result, String locator) {
+        SmartLocatorResult.LocatorCandidate candidate = candidateOrNull(result, locator);
+        if (candidate == null) {
+            return;
+        }
+        assertEquals(SmartLocatorResult.RiskLevel.HIGH, candidate.getRiskLevel());
+        assertTrue(candidateReasonContains(candidate, "generated")
+            || candidateReasonContains(candidate, "unstable"));
+    }
+
+    private static SmartLocatorResult.LocatorCandidate candidateOrNull(SmartLocatorResult result, String locator) {
+        return result.getCandidates().stream()
+            .filter(candidate -> locator.equals(candidate.getValue()))
+            .findFirst()
+            .orElse(null);
+    }
+
+    private static boolean candidateReasonContains(SmartLocatorResult.LocatorCandidate candidate, String expected) {
+        return candidate.getReason().toLowerCase().contains(expected.toLowerCase());
     }
 
     @SuppressWarnings("unchecked")

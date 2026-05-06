@@ -26,6 +26,14 @@ public class SmartLocatorBuilder {
     private static final Pattern CSS_SIMPLE_ID = Pattern.compile("[A-Za-z_][-A-Za-z0-9_]*");
     private static final Pattern DYNAMIC_PATTERN =
         Pattern.compile("(?i)([a-f0-9]{8,}|\\d{4,}|_[a-f0-9]{6,}|-[a-f0-9]{6,})");
+    private static final Pattern UUID_PATTERN =
+        Pattern.compile("(?i)^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$");
+    private static final Pattern LONG_HEX_ID_PATTERN =
+        Pattern.compile("(?i)^[a-f0-9]{12,}$");
+    private static final Pattern GENERATED_FRAMEWORK_ID_PATTERN = Pattern.compile(
+        "(?i)^(mui-\\d+|mat-input-\\d+|ember\\d+|ng-tns-.+|react-select-\\d+-.+|radix-.+:r\\d+.*|:r\\d+:?|"
+            + "headlessui[-_].*|downshift[-_].*|rc_select[-_].*|ant-select[-_].*)$"
+    );
     private static final Set<String> GENERIC_CLASS_TOKENS = Set.of(
         "active", "selected", "focus", "focused", "row", "col", "container", "wrapper", "field", "group", "item"
     );
@@ -99,7 +107,8 @@ public class SmartLocatorBuilder {
             .orElse(rankedCandidates.get(0));
 
         log(logs, "selected %s=%s strategy=%s risk=%s unique=%s score=%.3f reason=%s",
-            selected.locatorType, selected.locator, selected.strategy, selected.riskLevel, selected.unique, selected.score, selected.reason);
+            selectedResult.getLocatorType(), selectedResult.getLocator(), selectedResult.getStrategy(),
+            selectedResult.getRiskLevel(), selectedResult.isUnique(), selectedResult.getScore(), selectedResult.getReason());
 
         return new SmartLocatorResult(
             extracted.tagName,
@@ -118,7 +127,7 @@ public class SmartLocatorBuilder {
     }
 
     private ExtractedElementMetadata detectElementFromElement(WebElement element) {
-        Object raw = js.executeScript(BrowserSemanticScripts.locatorExtractionScript("arguments[0]"), element);
+        Object raw = js.executeScript(BrowserSemanticScripts.locatorExtractionScript("arguments[0]", false), element);
         return withSemanticSignals(toExtractedElement(raw, "Could not normalize DOM element " + element));
     }
 
@@ -285,11 +294,12 @@ public class SmartLocatorBuilder {
         List<Candidate> candidates = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
 
-        if (isStableValue(extracted.id)) {
-            String locator = CSS_SIMPLE_ID.matcher(extracted.id).matches()
-                ? "#" + extracted.id
-                : "[id='" + cssLiteral(extracted.id) + "']";
+        if (isStableId(extracted.id)) {
+            String locator = idLocator(extracted.id);
             addCandidate(candidates, seen, "css", locator, "id", 1, "unique id", SmartLocatorResult.RiskLevel.LOW, logs);
+        } else if (isGeneratedOrUnstableId(extracted.id)) {
+            addCandidate(candidates, seen, "css", idLocator(extracted.id), "generated-id", 9,
+                "generated id / unstable framework id", SmartLocatorResult.RiskLevel.HIGH, logs);
         } else if (!normalizeSpace(extracted.id).isBlank()) {
             log(logs, "rejected raw id='%s' reason=dynamic-or-fragile", extracted.id);
         }
@@ -317,14 +327,14 @@ public class SmartLocatorBuilder {
     private void addAccessibilityCandidates(List<Candidate> candidates, Set<String> seen,
                                             ExtractedElementMetadata extracted, List<String> logs) {
         if (isStableValue(extracted.ariaLabel)) {
-            addCandidate(candidates, seen, "css",
-                "[aria-label='" + cssLiteral(extracted.ariaLabel) + "']",
-                "aria-label", 3, "aria-label", SmartLocatorResult.RiskLevel.LOW, logs);
             if (isStableValue(extracted.semanticRole)) {
                 addCandidate(candidates, seen, "css",
                     "[role='" + cssLiteral(extracted.semanticRole) + "'][aria-label='" + cssLiteral(extracted.ariaLabel) + "']",
                     "role-aria-label", 3, "role + aria-label", SmartLocatorResult.RiskLevel.LOW, logs);
             }
+            addCandidate(candidates, seen, "css",
+                "[aria-label='" + cssLiteral(extracted.ariaLabel) + "']",
+                "aria-label", 3, "aria-label", SmartLocatorResult.RiskLevel.LOW, logs);
         }
 
         String ariaLabelledBy = attributeValue(extracted.element, "aria-labelledby");
@@ -342,10 +352,10 @@ public class SmartLocatorBuilder {
         }
         String tag = actualTag(extracted);
         addCandidate(candidates, seen, "css",
-            tag + "[name='" + cssLiteral(extracted.name) + "']",
+            "[name='" + cssLiteral(extracted.name) + "']",
             "name", 4, "name attribute", SmartLocatorResult.RiskLevel.LOW, logs);
         addCandidate(candidates, seen, "css",
-            "[name='" + cssLiteral(extracted.name) + "']",
+            tag + "[name='" + cssLiteral(extracted.name) + "']",
             "name", 4, "name attribute", SmartLocatorResult.RiskLevel.LOW, logs);
     }
 
@@ -357,14 +367,14 @@ public class SmartLocatorBuilder {
         if ("input".equals(tag) && isStableValue(extracted.type)) {
             addCandidate(candidates, seen, "css",
                 "input[type='" + cssLiteral(extracted.type) + "']",
-                "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.LOW, logs);
+                "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.MEDIUM, logs);
         }
         if ("button".equals(tag) && isStableValue(extracted.type)) {
             addCandidate(candidates, seen, "css",
                 "button[type='" + cssLiteral(extracted.type) + "']",
-                "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.LOW, logs);
+                "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.MEDIUM, logs);
         }
-        if (isStableClassToken(stableClass)) {
+        if (isStableClassToken(stableClass) && shouldUseStableClassCssCandidate(extracted)) {
             addCandidate(candidates, seen, "css",
                 tag + "." + stableClass,
                 "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.MEDIUM, logs);
@@ -373,11 +383,6 @@ public class SmartLocatorBuilder {
             addCandidate(candidates, seen, "css",
                 tag + "[contenteditable='true'][aria-label='" + cssLiteral(extracted.ariaLabel) + "']",
                 "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.LOW, logs);
-        }
-        if (ACTION_TAGS.contains(tag) && isStableClassToken(stableClass)) {
-            addCandidate(candidates, seen, "css",
-                tag + "." + stableClass,
-                "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.MEDIUM, logs);
         }
     }
 
@@ -392,20 +397,21 @@ public class SmartLocatorBuilder {
         String labelSelector = labelXPathSelector(context, labelText);
         String targetTag = actualTag(extracted);
         String targetPredicate = targetXPathPredicate(extracted);
+        String reason = labelBasedReason(extracted, targetTag);
 
         addCandidate(candidates, seen, "xpath",
             containerPrefix + labelSelector + "/following-sibling::" + targetTag + "[" + targetPredicate + "][1]",
-            "label-based", 6, "label-based " + targetTag + " field", SmartLocatorResult.RiskLevel.MEDIUM, logs);
+            "label-based", 6, reason, SmartLocatorResult.RiskLevel.MEDIUM, logs);
 
         if (!containerPrefix.isBlank()) {
             addCandidate(candidates, seen, "xpath",
                 containerPrefix + "//" + labelSelectorWithoutPrefix(context, labelText) + "/following-sibling::" + targetTag + "[" + targetPredicate + "][1]",
-                "label-based", 6, "label-based " + targetTag + " field", SmartLocatorResult.RiskLevel.MEDIUM, logs);
+                "label-based", 6, reason, SmartLocatorResult.RiskLevel.MEDIUM, logs);
         }
 
         addCandidate(candidates, seen, "xpath",
             containerPrefix + labelSelector + "/following::" + targetTag + "[" + targetPredicate + "][1]",
-            "label-based", 6, "label-based " + targetTag + " field", SmartLocatorResult.RiskLevel.MEDIUM, logs);
+            "label-based", 6, reason, SmartLocatorResult.RiskLevel.MEDIUM, logs);
     }
 
     private void addRoleAccessibleNameXPathCandidates(List<Candidate> candidates, Set<String> seen,
@@ -428,6 +434,11 @@ public class SmartLocatorBuilder {
         if (ACTION_TAGS.contains(tag) && isStableClassToken(stableClass)) {
             addCandidate(candidates, seen, "xpath",
                 "//" + tag + "[contains(@class," + xpathLiteral(stableClass) + ") and normalize-space()=" + xpathLiteral(extracted.text) + "]",
+                "text-action", 8, "text-based action", SmartLocatorResult.RiskLevel.MEDIUM, logs);
+        }
+        if (ACTION_TAGS.contains(tag)) {
+            addCandidate(candidates, seen, "xpath",
+                "//" + tag + "[normalize-space()=" + xpathLiteral(extracted.text) + "]",
                 "text-action", 8, "text-based action", SmartLocatorResult.RiskLevel.MEDIUM, logs);
         }
         addCandidate(candidates, seen, "xpath",
@@ -607,6 +618,24 @@ public class SmartLocatorBuilder {
         return Set.of("input", "textarea", "select").contains(extracted.tagName);
     }
 
+    private static boolean shouldUseStableClassCssCandidate(ExtractedElementMetadata extracted) {
+        String tag = actualTag(extracted);
+        if (ACTION_TAGS.contains(tag)) {
+            return !isStableValue(extracted.text);
+        }
+        if (extracted.contentEditable.equalsIgnoreCase("true")) {
+            return true;
+        }
+        return Set.of("input", "textarea", "select", "button").contains(tag);
+    }
+
+    private static String labelBasedReason(ExtractedElementMetadata extracted, String targetTag) {
+        if (extracted.contentEditable.equalsIgnoreCase("true")) {
+            return "label-based contenteditable " + targetTag + " field";
+        }
+        return "label-based " + targetTag + " field";
+    }
+
     private static String targetXPathPredicate(ExtractedElementMetadata extracted) {
         if (extracted.contentEditable.equalsIgnoreCase("true")) {
             return "@contenteditable='true'";
@@ -714,6 +743,22 @@ public class SmartLocatorBuilder {
         return !normalized.isBlank() && normalized.length() <= 120 && !looksDynamic(normalized);
     }
 
+    private static boolean isStableId(String id) {
+        String normalized = normalizeSpace(id);
+        return isStableValue(normalized) && !isGeneratedOrUnstableId(normalized);
+    }
+
+    private static boolean isGeneratedOrUnstableId(String id) {
+        String normalized = normalizeSpace(id);
+        if (normalized.isBlank() || normalized.length() > 120) {
+            return false;
+        }
+        return GENERATED_FRAMEWORK_ID_PATTERN.matcher(normalized).matches()
+            || UUID_PATTERN.matcher(normalized).matches()
+            || LONG_HEX_ID_PATTERN.matcher(normalized).matches()
+            || looksDynamic(normalized);
+    }
+
     private static boolean looksDynamic(String value) {
         return DYNAMIC_PATTERN.matcher(value).find();
     }
@@ -724,6 +769,12 @@ public class SmartLocatorBuilder {
 
     private static String cssLiteral(String value) {
         return value.replace("\\", "\\\\").replace("'", "\\'");
+    }
+
+    private static String idLocator(String id) {
+        return CSS_SIMPLE_ID.matcher(id).matches()
+            ? "#" + id
+            : "[id='" + cssLiteral(id) + "']";
     }
 
     private static String xpathLiteral(String value) {
@@ -791,6 +842,9 @@ public class SmartLocatorBuilder {
             String resolvedReason = unique || rejectedReason == null
                 ? reason
                 : reason + " (" + rejectedReason + ")";
+            SmartLocatorResult.RiskLevel resolvedRisk = unique
+                ? riskLevel
+                : SmartLocatorResult.RiskLevel.HIGH;
             return new SmartLocatorResult.LocatorCandidate(
                 by,
                 locatorType,
@@ -798,7 +852,7 @@ public class SmartLocatorBuilder {
                 rank,
                 unique,
                 resolvedReason,
-                riskLevel,
+                resolvedRisk,
                 score,
                 strategy
             );
