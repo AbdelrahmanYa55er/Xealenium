@@ -6,7 +6,12 @@ public final class BrowserSemanticScripts {
 
     private static final String COMMON_HELPERS = """
         function trim(v) { return v ? String(v).trim() : ''; }
-        function textOf(el) { return el && el.innerText ? el.innerText.replace(/\\s+/g, ' ').trim() : ''; }
+        function textOf(el) {
+          if (!el || !el.innerText) return '';
+          var clone = el.cloneNode(true);
+          clone.querySelectorAll('i, .fa, .material-icons').forEach(function(icon) { icon.remove(); });
+          return clone.innerText ? clone.innerText.replace(/\\s+/g, ' ').trim() : '';
+        }
         function attr(el, name) { return el ? trim(el.getAttribute(name)) : ''; }
         function cssEscape(value) {
           if (window.CSS && CSS.escape) return CSS.escape(value);

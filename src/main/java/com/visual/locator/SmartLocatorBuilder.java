@@ -40,6 +40,9 @@ public class SmartLocatorBuilder {
     private static final List<String> TEST_ATTRIBUTES = List.of(
         "data-testid", "data-test", "data-qa", "data-cy", "data-automation"
     );
+    private static final List<String> BUSINESS_ATTRIBUTES = List.of(
+        "data-product-id", "data-item-id", "data-order-id", "data-category-id", "data-row-id"
+    );
     private static final Set<String> LABEL_TAGS = Set.of("label", "span", "div", "legend");
     private static final Set<String> ACTION_TAGS = Set.of("button", "a");
     private static final Set<String> CONTAINER_TAGS = Set.of("form", "section", "fieldset");
@@ -311,8 +314,10 @@ public class SmartLocatorBuilder {
         addStableAttributeCandidate(candidates, seen, attributeValue(extracted.element, "data-automation"), "data-automation", 2, logs);
 
         addAccessibilityCandidates(candidates, seen, extracted, logs);
+        addBusinessAttributeCandidates(candidates, seen, extracted, logs);
         addNameCandidates(candidates, seen, extracted, logs);
         addSemanticCssCandidates(candidates, seen, extracted, logs);
+        addHrefCandidates(candidates, seen, extracted, logs);
         addLabelBasedCandidates(candidates, seen, extracted, context, logs);
         addRoleAccessibleNameXPathCandidates(candidates, seen, extracted, logs);
         addActionCandidates(candidates, seen, extracted, logs);
@@ -359,6 +364,55 @@ public class SmartLocatorBuilder {
             "name", 4, "name attribute", SmartLocatorResult.RiskLevel.LOW, logs);
     }
 
+    private void addBusinessAttributeCandidates(List<Candidate> candidates, Set<String> seen,
+                                                ExtractedElementMetadata extracted, List<String> logs) {
+        String tag = actualTag(extracted);
+        String classToken = businessClassToken(extracted.className);
+        for (String attributeName : BUSINESS_ATTRIBUTES) {
+            String value = attributeValue(extracted.element, attributeName);
+            if (!isStableValue(value)) {
+                continue;
+            }
+            String businessScope = businessScopeSelector(extracted.element);
+            if (!businessScope.isBlank() && !classToken.isBlank()) {
+                addCandidate(candidates, seen, "css",
+                    businessScope + " " + tag + "." + classToken + "[" + attributeName + "='" + cssLiteral(value) + "']",
+                    attributeName, 4, "business attribute " + attributeName + " with card context",
+                    SmartLocatorResult.RiskLevel.MEDIUM, logs);
+            }
+            if (!classToken.isBlank()) {
+                addCandidate(candidates, seen, "css",
+                    tag + "." + classToken + "[" + attributeName + "='" + cssLiteral(value) + "']",
+                    attributeName, 4, "business attribute " + attributeName,
+                    SmartLocatorResult.RiskLevel.MEDIUM, logs);
+            }
+            addCandidate(candidates, seen, "css",
+                tag + "[" + attributeName + "='" + cssLiteral(value) + "']",
+                attributeName, 4, "business attribute " + attributeName,
+                SmartLocatorResult.RiskLevel.MEDIUM, logs);
+        }
+    }
+
+    private String businessScopeSelector(WebElement element) {
+        Object raw = js.executeScript("""
+            var el = arguments[0];
+            if (!el || !el.closest) return '';
+            var productInfo = el.closest('.productinfo');
+            var features = el.closest('.features_items');
+            if (productInfo && features) return '.features_items .productinfo';
+            var recommended = el.closest('.recommended_items');
+            if (productInfo && recommended) return '.recommended_items .productinfo';
+            var card = el.closest('.product-card,[data-card-id],[data-product-card]');
+            if (card) {
+              if (card.classList && card.classList.length) return '.' + Array.from(card.classList).join('.');
+              if (card.getAttribute('data-card-id')) return '[data-card-id="' + card.getAttribute('data-card-id') + '"]';
+              if (card.getAttribute('data-product-card')) return '[data-product-card="' + card.getAttribute('data-product-card') + '"]';
+            }
+            return '';
+            """, element);
+        return raw == null ? "" : normalizeSpace(raw.toString());
+    }
+
     private void addSemanticCssCandidates(List<Candidate> candidates, Set<String> seen,
                                           ExtractedElementMetadata extracted, List<String> logs) {
         String tag = actualTag(extracted);
@@ -383,6 +437,27 @@ public class SmartLocatorBuilder {
             addCandidate(candidates, seen, "css",
                 tag + "[contenteditable='true'][aria-label='" + cssLiteral(extracted.ariaLabel) + "']",
                 "semantic-css", 5, "stable semantic css", SmartLocatorResult.RiskLevel.LOW, logs);
+        }
+    }
+
+    private void addHrefCandidates(List<Candidate> candidates, Set<String> seen,
+                                   ExtractedElementMetadata extracted, List<String> logs) {
+        String tag = actualTag(extracted);
+        if (!"a".equals(tag)) {
+            return;
+        }
+        String href = attributeValue(extracted.element, "href");
+        String hrefToken = meaningfulHrefToken(href);
+        if (!isStableValue(hrefToken)) {
+            return;
+        }
+        addCandidate(candidates, seen, "css",
+            "a[href$='" + cssLiteral(hrefToken) + "']",
+            "href", 5, "meaningful href", SmartLocatorResult.RiskLevel.MEDIUM, logs);
+        if (isStableValue(extracted.text)) {
+            addCandidate(candidates, seen, "xpath",
+                "//a[contains(@href," + xpathLiteral(hrefToken) + ") and normalize-space()=" + xpathLiteral(extracted.text) + "]",
+                "href-text", 5, "meaningful href + text", SmartLocatorResult.RiskLevel.MEDIUM, logs);
         }
     }
 
@@ -724,6 +799,28 @@ public class SmartLocatorBuilder {
         return "";
     }
 
+    private static String businessClassToken(String className) {
+        if (className == null || className.isBlank()) {
+            return "";
+        }
+        String fallback = "";
+        for (String token : className.split("\\s+")) {
+            String normalized = token.trim();
+            String lower = normalized.toLowerCase(Locale.ROOT);
+            if (!isStableClassToken(normalized) || Set.of("btn", "button", "link", "default").contains(lower)
+                || lower.startsWith("btn-")) {
+                continue;
+            }
+            if (normalized.contains("-") || normalized.contains("_")) {
+                return normalized;
+            }
+            if (fallback.isBlank()) {
+                fallback = normalized;
+            }
+        }
+        return fallback;
+    }
+
     private static boolean isStableClassToken(String token) {
         if (token == null || token.isBlank()) {
             return false;
@@ -761,6 +858,31 @@ public class SmartLocatorBuilder {
 
     private static boolean looksDynamic(String value) {
         return DYNAMIC_PATTERN.matcher(value).find();
+    }
+
+    private static String meaningfulHrefToken(String href) {
+        String normalized = normalizeSpace(href);
+        if (normalized.isBlank()) {
+            return "";
+        }
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("javascript:") || lower.startsWith("mailto:") || lower.startsWith("tel:")) {
+            return "";
+        }
+        int hashIndex = normalized.indexOf('#');
+        if (hashIndex >= 0 && hashIndex < normalized.length() - 1) {
+            return normalized.substring(hashIndex);
+        }
+        String withoutQuery = normalized.split("\\?", 2)[0];
+        int schemeIndex = withoutQuery.indexOf("://");
+        if (schemeIndex >= 0) {
+            int pathStart = withoutQuery.indexOf('/', schemeIndex + 3);
+            withoutQuery = pathStart >= 0 ? withoutQuery.substring(pathStart) : "";
+        }
+        if (withoutQuery.isBlank() || "/".equals(withoutQuery)) {
+            return "";
+        }
+        return withoutQuery;
     }
 
     private static double roundScore(double value) {

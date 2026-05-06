@@ -88,6 +88,64 @@ public class SmartLocatorBuilderTest {
     }
 
     @Test
+    void businessDataProductIdBeatsRepeatedActionText() {
+        driver.get(htmlUrl("""
+            <a data-product-id="1" class="btn btn-default add-to-cart">Add to cart</a>
+            <a data-product-id="2" class="btn btn-default add-to-cart">Add to cart</a>
+            <a data-product-id="43" class="btn btn-default add-to-cart">Add to cart</a>
+            """));
+
+        for (String productId : List.of("1", "2", "43")) {
+            SmartLocatorResult result = builder.buildLocatorForElement(
+                driver.findElement(By.cssSelector("a[data-product-id='" + productId + "']")));
+
+            assertSelected(result, "css", "a.add-to-cart[data-product-id='" + productId + "']");
+            assertTrue(result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.LOW
+                || result.getSelectedRiskLevel() == SmartLocatorResult.RiskLevel.MEDIUM);
+            assertTrue(reasonContains(result, "data-product-id") || reasonContains(result, "business"));
+            assertTrue(candidateRank(result, "a.add-to-cart[data-product-id='" + productId + "']")
+                < candidateRank(result, "//a[contains(@class,'btn') and normalize-space()='Add to cart']"));
+            assertUnique(result, driver);
+        }
+    }
+
+    @Test
+    void productDetailHrefBeatsRepeatedViewProductText() {
+        driver.get(htmlUrl("""
+            <a href="https://automationexercise.com/product_details/1">View Product</a>
+            <a href="https://automationexercise.com/product_details/2">View Product</a>
+            <a href="https://automationexercise.com/product_details/43">View Product</a>
+            """));
+
+        for (String productId : List.of("1", "2", "43")) {
+            SmartLocatorResult result = builder.buildLocatorForElement(
+                driver.findElement(By.cssSelector("a[href$='/product_details/" + productId + "']")));
+
+            assertSelected(result, "css", "a[href$='/product_details/" + productId + "']");
+            assertEquals(SmartLocatorResult.RiskLevel.MEDIUM, result.getSelectedRiskLevel());
+            assertTrue(reasonContains(result, "href"));
+            assertTrue(candidateRank(result, "a[href$='/product_details/" + productId + "']")
+                < candidateRank(result, "//a[normalize-space()='View Product']"));
+            assertUnique(result, driver);
+        }
+    }
+
+    @Test
+    void hrefCandidateAvoidsIconTextPollution() {
+        driver.get(htmlUrl("""
+            <a href="https://automationexercise.com/products"><i class="material-icons">?</i> Products</a>
+            """));
+
+        SmartLocatorResult result = builder.buildLocatorForElement(driver.findElement(By.cssSelector("a")));
+
+        assertSelected(result, "css", "a[href$='/products']");
+        assertEquals(SmartLocatorResult.RiskLevel.MEDIUM, result.getSelectedRiskLevel());
+        assertFalse(result.getLocator().contains("?"));
+        assertTrue(reasonContains(result, "href"));
+        assertUnique(result, driver);
+    }
+
+    @Test
     void additionalStableTestAttributesAreSelectedAsLowRisk() {
         assertSelectedLocatorForHtml("""
             <input data-test="email-field">
