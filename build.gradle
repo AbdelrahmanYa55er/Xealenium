@@ -36,6 +36,9 @@ def embeddingModelPath = file('models/gte-small-onnx/model.onnx').path
 
 test {
     useJUnitPlatform()
+    if (System.getProperty('headless') != null) {
+        systemProperty 'headless', System.getProperty('headless')
+    }
     testLogging {
         showStandardStreams = true
         events 'passed', 'skipped', 'failed'
@@ -53,6 +56,9 @@ def configureXealeniumDemoTask = { task, taskName, pageUrl, captureBaseline, emb
     }
     task.systemProperty 'testUrl', System.getProperty('testUrl', pageUrl)
     task.systemProperty 'interactive', System.getProperty('interactive', 'false')
+    if (System.getProperty('headless') != null) {
+        task.systemProperty 'headless', System.getProperty('headless')
+    }
     task.systemProperty 'report', System.getProperty('report', 'true')
     task.systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', String.valueOf(captureBaseline))
     task.systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', String.valueOf(captureBaseline))
@@ -92,6 +98,9 @@ def configureProfileCycleTask = { task, taskName, pageUrl, phase, captureBaselin
     task.systemProperty 'profile.phase', phase
     task.systemProperty 'testUrl', System.getProperty('testUrl', pageUrl)
     task.systemProperty 'interactive', System.getProperty('interactive', 'false')
+    if (System.getProperty('headless') != null) {
+        task.systemProperty 'headless', System.getProperty('headless')
+    }
     task.systemProperty 'report', System.getProperty('report', 'true')
     task.systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', String.valueOf(captureBaseline))
     task.systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', String.valueOf(captureBaseline))
@@ -113,4 +122,41 @@ tasks.register('profileRunHealing', Test) {
 
 tasks.register('profileRunHealingWithEmbeddings', Test) {
     configureProfileCycleTask(delegate, 'Run profile scenario healing against pages/profile_updated.html with local embeddings enabled.', profileUpdatedUrl, 'healing', false, true, 0.70)
+}
+
+def configureRealProfileTask = { task, taskName, phase, captureBaseline, embeddingsEnabled, threshold ->
+    task.group = 'xealenium'
+    task.description = taskName
+    task.testClassesDirs = sourceSets.test.output.classesDirs
+    task.classpath = sourceSets.test.runtimeClasspath
+    task.useJUnitPlatform()
+    task.filter {
+        includeTestsMatching 'com.demo.realprofile.RealProfileFullCycleTest'
+    }
+    task.systemProperty 'real.profile.phase', phase
+    if (System.getProperty('headless') != null) {
+        task.systemProperty 'headless', System.getProperty('headless')
+    }
+    task.systemProperty 'report', System.getProperty('report', 'true')
+    task.systemProperty 'interactive', System.getProperty('interactive', 'false')
+    task.systemProperty 'visual.captureBaseline', System.getProperty('visual.captureBaseline', String.valueOf(captureBaseline))
+    task.systemProperty 'visual.captureBaseline.refresh', System.getProperty('visual.captureBaseline.refresh', String.valueOf(captureBaseline))
+    task.systemProperty 'visual.threshold', System.getProperty('visual.threshold', String.valueOf(threshold))
+    task.systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', String.valueOf(embeddingsEnabled))
+    task.systemProperty 'visual.embedding.modelName', System.getProperty('visual.embedding.modelName', embeddingsEnabled ? 'gte-small' : '')
+    task.systemProperty 'visual.embedding.modelPath', System.getProperty('visual.embedding.modelPath', embeddingsEnabled ? embeddingModelPath : '')
+    task.systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', embeddingsEnabled ? embeddingModelPath : '')
+    task.outputs.upToDateWhen { false }
+}
+
+tasks.register('realProfileCaptureBaseline', Test) {
+    configureRealProfileTask(delegate, 'Capture the real profile full-cycle baseline page.', 'capture', true, false, 0.70)
+}
+
+tasks.register('realProfileRunHealing', Test) {
+    configureRealProfileTask(delegate, 'Run the real profile full-cycle healing scenario.', 'healing', false, false, 0.70)
+}
+
+tasks.register('realProfileRunHealingWithEmbeddings', Test) {
+    configureRealProfileTask(delegate, 'Run the real profile full-cycle healing scenario with local embeddings enabled.', 'healing', false, true, 0.70)
 }

@@ -7,6 +7,7 @@ public final class VisualHealingConfig {
     private final boolean refreshBaseline;
     private final boolean interactiveReview;
     private final double threshold;
+    private final CandidateScoringWeights scoringWeights;
     private final EmbeddingConfig embeddingConfig;
 
     private VisualHealingConfig(Builder builder) {
@@ -14,6 +15,9 @@ public final class VisualHealingConfig {
         this.refreshBaseline = builder.refreshBaseline;
         this.interactiveReview = builder.interactiveReview;
         this.threshold = builder.threshold;
+        this.scoringWeights = builder.scoringWeights == null
+            ? CandidateScoringWeights.builder().build()
+            : builder.scoringWeights;
         this.embeddingConfig = builder.embeddingConfig == null
             ? EmbeddingConfig.builder().build()
             : builder.embeddingConfig;
@@ -32,6 +36,7 @@ public final class VisualHealingConfig {
         builder.refreshBaseline(XealeniumRuntimeProperties.getBoolean("visual.captureBaseline.refresh", false));
         builder.interactiveReview(XealeniumRuntimeProperties.getBoolean("interactive", false));
         builder.threshold(XealeniumRuntimeProperties.getDouble("visual.threshold", 0.56));
+        builder.scoringWeights(CandidateScoringWeights.fromRuntimeProperties());
         builder.embeddingConfig(EmbeddingConfig.fromSystemProperties());
         return builder.build();
     }
@@ -52,6 +57,10 @@ public final class VisualHealingConfig {
         return threshold;
     }
 
+    public CandidateScoringWeights getScoringWeights() {
+        return scoringWeights;
+    }
+
     public EmbeddingConfig getEmbeddingConfig() {
         return embeddingConfig;
     }
@@ -68,12 +77,13 @@ public final class VisualHealingConfig {
             && interactiveReview == other.interactiveReview
             && Double.compare(threshold, other.threshold) == 0
             && Objects.equals(captureBaseline, other.captureBaseline)
+            && Objects.equals(scoringWeights, other.scoringWeights)
             && Objects.equals(embeddingConfig, other.embeddingConfig);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(captureBaseline, refreshBaseline, interactiveReview, threshold, embeddingConfig);
+        return Objects.hash(captureBaseline, refreshBaseline, interactiveReview, threshold, scoringWeights, embeddingConfig);
     }
 
     public static final class Builder {
@@ -81,6 +91,7 @@ public final class VisualHealingConfig {
         private boolean refreshBaseline;
         private boolean interactiveReview;
         private double threshold = 0.56;
+        private CandidateScoringWeights scoringWeights;
         private EmbeddingConfig embeddingConfig;
 
         public Builder captureBaseline(Boolean captureBaseline) {
@@ -100,6 +111,11 @@ public final class VisualHealingConfig {
 
         public Builder threshold(double threshold) {
             this.threshold = threshold;
+            return this;
+        }
+
+        public Builder scoringWeights(CandidateScoringWeights scoringWeights) {
+            this.scoringWeights = scoringWeights;
             return this;
         }
 

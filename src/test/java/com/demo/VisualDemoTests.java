@@ -30,6 +30,7 @@ public class VisualDemoTests {
         XealeniumRuntimeProperties.applyToSystemProperties(
             "report",
             "interactive",
+            "headless",
             "visual.captureBaseline",
             "visual.captureBaseline.refresh",
             "visual.threshold",
@@ -38,8 +39,10 @@ public class VisualDemoTests {
             "visual.embedding.modelPath"
         );
         ChromeOptions opts = new ChromeOptions();
-        // Always visible - no headless!
         opts.addArguments("--remote-allow-origins=*", "--no-sandbox", "--start-maximized");
+        if (XealeniumRuntimeProperties.getBoolean("headless", false)) {
+            opts.addArguments("--headless=new", "--window-size=1440,1200");
+        }
         chrome = new ChromeDriver(opts);
         WebDriver recoveredDriver = createRecoveringDriver(chrome);
         VisualHealingConfig config = VisualHealingConfig.fromSystemProperties();

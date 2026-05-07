@@ -1,5 +1,6 @@
 package com.visual.engine;
 
+import com.visual.config.CandidateScoringWeights;
 import com.visual.embedding.LocalEmbeddingService;
 import com.visual.image.ImageUtils;
 import com.visual.locator.SmartLocatorBuilder;
@@ -20,27 +21,17 @@ import java.util.List;
 import java.util.Objects;
 
 final class CandidateScorer {
-    private static final double W_VIS = 0.09;
-    private static final double W_POS = 0.07;
-    private static final double W_TXT = 0.06;
-    private static final double W_KIND = 0.10;
-    private static final double W_SEQ = 0.04;
-    private static final double W_ROLE = 0.14;
-    private static final double W_AUTO = 0.08;
-    private static final double W_SEM = 0.20;
-    private static final double W_FIELD = 0.22;
-    private static final double W_EMB = 0.12;
-    private static final double MAX_D = 600.0;
-
     private final CandidateCollector candidateCollector;
     private final LocalEmbeddingService embeddingService;
     private final FieldAssignmentEngine fieldAssignmentEngine;
+    private final CandidateScoringWeights weights;
 
     CandidateScorer(CandidateCollector candidateCollector, LocalEmbeddingService embeddingService,
-                    FieldAssignmentEngine fieldAssignmentEngine) {
+                    FieldAssignmentEngine fieldAssignmentEngine, CandidateScoringWeights weights) {
         this.candidateCollector = candidateCollector;
         this.embeddingService = embeddingService;
         this.fieldAssignmentEngine = fieldAssignmentEngine;
+        this.weights = weights == null ? CandidateScoringWeights.builder().build() : weights;
     }
 
     CandidateScoringResult score(WebDriver driver, String key, ElementSnapshot base, BufferedImage pageImage,
@@ -49,7 +40,7 @@ final class CandidateScorer {
                                  List<CandidateMetadata> candidates,
                                  FieldAssignmentEngine.FieldCompetitionContext fieldCompetition) {
         SmartLocatorBuilder locatorBuilder = new SmartLocatorBuilder(driver);
-        double embeddingWeight = embeddingsActive ? W_EMB : 0.0;
+        double embeddingWeight = embeddingsActive ? weights.getEmbedding() : 0.0;
         String baseSemanticName = semanticPrimaryName(base.kind, base.accessibleName, base.labelText, base.placeholder, base.text, base.inputType);
         float[] baseSemanticNameEmbedding = embeddingsActive ? embeddingService.embed(baseSemanticName) : null;
         List<CandidateScore> ranked = new ArrayList<>();
@@ -57,7 +48,7 @@ final class CandidateScorer {
 
         for (CandidateMetadata candidate : candidates) {
             double vis = ImageUtils.templateMatch(ImageUtils.crop(pageImage, candidate.x, candidate.y, candidate.w, candidate.h), template);
-            double pos = ImageUtils.positionScore(base.x, base.y, base.w, base.h, candidate.x, candidate.y, candidate.w, candidate.h, MAX_D);
+            double pos = ImageUtils.positionScore(base.x, base.y, base.w, base.h, candidate.x, candidate.y, candidate.w, candidate.h, weights.getMaxDistance());
             double txt = SemanticSimilarity.simpleScore(base.text, candidate.text);
             double kind = kindScore(baseKind, candidate.kind);
             double seq = FieldAssignmentEngine.sequenceScore(baseSequence, baseKindCount, candidate.sequence, candidate.kindCount, baseKind, candidate.kind);
@@ -70,8 +61,10 @@ final class CandidateScorer {
                 baseSemanticNameEmbedding, candidateSemanticNameEmbedding, embeddingsActive);
             double fieldSemantic = fieldAssignmentEngine.fieldSemanticScore(candidate, fieldCompetition);
             double embedding = embeddingsActive ? embeddingScore(baseEmbedding, candidate.embeddingVector, baseKind, candidate.kind) : 0.0;
-            double score = W_VIS * vis + W_POS * pos + W_TXT * txt + W_KIND * kind + W_SEQ * seq
-                + W_ROLE * role + W_AUTO * autocomplete + W_SEM * semantic + W_FIELD * fieldSemantic + embeddingWeight * embedding;
+            double score = weights.getVisual() * vis + weights.getPosition() * pos + weights.getText() * txt
+                + weights.getKind() * kind + weights.getSequence() * seq + weights.getRole() * role
+                + weights.getAutocomplete() * autocomplete + weights.getSemantic() * semantic
+                + weights.getField() * fieldSemantic + embeddingWeight * embedding;
 
             SmartLocatorResult smartLocator = buildSmartLocator(driver, locatorBuilder, candidate);
             String selector = smartLocator != null

@@ -154,6 +154,7 @@ public class ProfileHealingCycleTests {
         XealeniumRuntimeProperties.applyToSystemProperties(
             "report",
             "interactive",
+            "headless",
             "visual.threshold",
             "visual.embedding.enabled",
             "visual.embedding.modelName",
@@ -168,6 +169,9 @@ public class ProfileHealingCycleTests {
     private void startDriver() {
         ChromeOptions opts = new ChromeOptions();
         opts.addArguments("--remote-allow-origins=*", "--no-sandbox", "--start-maximized");
+        if (XealeniumRuntimeProperties.getBoolean("headless", false)) {
+            opts.addArguments("--headless=new", "--window-size=1440,1200");
+        }
         chrome = new ChromeDriver(opts);
         WebDriver recoveredDriver = createRecoveringDriver(chrome);
         VisualHealingConfig config = VisualHealingConfig.fromSystemProperties();

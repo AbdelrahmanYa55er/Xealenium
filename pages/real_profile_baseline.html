@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real Profile Baseline</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f4f7fb;
+            color: #172033;
+            margin: 0;
+            padding: 42px 18px;
+        }
+        .profile-shell {
+            max-width: 680px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #dbe4f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(30, 45, 80, 0.12);
+            padding: 30px;
+        }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            color: #18233a;
+        }
+        .intro {
+            margin: 0 0 24px;
+            color: #607089;
+        }
+        .field {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #33435f;
+            font-weight: 650;
+        }
+        input,
+        select {
+            box-sizing: border-box;
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid #b8c5d8;
+            border-radius: 6px;
+            background: #ffffff;
+            padding: 9px 11px;
+            color: #172033;
+            font-size: 14px;
+        }
+        input:focus,
+        select:focus {
+            border-color: #2563eb;
+            outline: 2px solid #bfdbfe;
+        }
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        .check-row input {
+            width: 18px;
+            min-height: 18px;
+            margin: 0;
+        }
+        .check-row label {
+            margin: 0;
+        }
+        button {
+            width: 100%;
+            min-height: 46px;
+            margin-top: 18px;
+            border: 0;
+            border-radius: 6px;
+            background: #2563eb;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 750;
+        }
+        #profile-status {
+            margin-top: 14px;
+            min-height: 20px;
+            color: #256c3b;
+            font-weight: 650;
+        }
+    </style>
+</head>
+<body>
+<main class="profile-shell" aria-labelledby="profile-title">
+    <h1 id="profile-title">Profile Settings</h1>
+    <p class="intro">Manage the core account details used across your workspace.</p>
+
+    <div class="field">
+        <label for="fullName">Full Name</label>
+        <input id="fullName" type="text" autocomplete="name" placeholder="Alex Morgan">
+    </div>
+
+    <div class="field">
+        <label for="email">Email Address</label>
+        <input id="email" type="email" autocomplete="email" placeholder="alex@example.com">
+    </div>
+
+    <div class="field">
+        <label for="phone">Phone Number</label>
+        <input id="phone" type="tel" autocomplete="tel" placeholder="+1 555 0100">
+    </div>
+
+    <div class="field">
+        <label for="jobTitle">Job Title</label>
+        <input id="jobTitle" type="text" autocomplete="organization-title" placeholder="Product Manager">
+    </div>
+
+    <div class="field">
+        <label for="department">Department</label>
+        <select id="department" aria-label="Department">
+            <option>Engineering</option>
+            <option>Product</option>
+            <option>Customer Success</option>
+            <option>Operations</option>
+        </select>
+    </div>
+
+    <div class="check-row">
+        <input id="notifications" type="checkbox">
+        <label for="notifications">Enable notifications</label>
+    </div>
+
+    <div class="check-row">
+        <input id="twoFactor" type="checkbox">
+        <label for="twoFactor">Enable two-factor authentication</label>
+    </div>
+
+    <button id="saveProfile" type="button" onclick="document.getElementById('profile-status').textContent='Profile saved'; window.realProfileSaved = true;">
+        Save Profile
+    </button>
+    <div id="profile-status" aria-live="polite"></div>
+</main>
+</body>
+</html>

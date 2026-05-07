@@ -57,7 +57,7 @@ public class VisualHealingEngine {
         healingReporter = new HealingReporter();
         baselineCaptureService = new BaselineCaptureService(store, semanticExtractor, embeddingService, candidateCollector);
         fieldAssignmentEngine = new FieldAssignmentEngine(store, embeddingService);
-        candidateScorer = new CandidateScorer(candidateCollector, embeddingService, fieldAssignmentEngine);
+        candidateScorer = new CandidateScorer(candidateCollector, embeddingService, fieldAssignmentEngine, this.config.getScoringWeights());
         healingDecisionEngine = new HealingDecisionEngine(this.config.getThreshold());
         pageIdentityService = new PageIdentityService();
         setInteractiveMode(this.config.isInteractiveReview());
