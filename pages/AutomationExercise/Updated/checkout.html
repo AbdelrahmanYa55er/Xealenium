@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Automation Exercise - Confirm Checkout</title>
+
+<style>
+body { font-family: Arial, Helvetica, sans-serif; background: #f6f6f6; color: #333; margin: 0; }
+.header { background: #fff; border-bottom: 1px solid #eee; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center; }
+.logo { font-size: 26px; color: #fe980f; font-weight: 700; }
+.nav a { color: #555; margin-left: 20px; text-decoration: none; }
+.nav a.active { color: #fe980f; }
+.container { max-width: 1080px; margin: 34px auto; background: #fff; padding: 28px; border: 1px solid #eee; }
+h1, h2, h3 { color: #333; }
+.heading { color: #fe980f; text-transform: uppercase; }
+.btn, button { background: #fe980f; color: #fff; border: 0; padding: 10px 18px; text-decoration: none; display: inline-block; cursor: pointer; }
+.btn-default { background: #fe980f; color: #fff; }
+.field { margin-bottom: 16px; }
+label { display: block; font-weight: 700; margin-bottom: 6px; }
+input, textarea, select, .editable { border: 1px solid #ddd; padding: 10px; min-height: 22px; width: 100%; box-sizing: border-box; background: #fff; }
+.cart-table { width: 100%; border-collapse: collapse; }
+.cart-table th { background: #fe980f; color: #fff; padding: 12px; text-align: left; }
+.cart-table td { border-bottom: 1px solid #eee; padding: 14px; vertical-align: middle; }
+.summary { border: 1px solid #eee; padding: 18px; margin-top: 22px; }
+.card { border: 1px solid #eee; padding: 16px; margin-bottom: 14px; background: #fff; }
+.product-grid { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 18px; }
+.product-card { border: 1px solid #eee; padding: 18px; text-align: center; background: #fff; }
+.price { color: #fe980f; font-size: 20px; font-weight: 700; }
+.status { border: 1px solid #cde8cd; background: #f2fff2; padding: 20px; text-align: center; }
+</style>
+
+<link href="../assets/css/automation-exercise-fixture.css" rel="stylesheet">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">Automation Exercise</div>
+  <nav class="nav">
+    <span>Home</span>
+    <span>Products</span>
+    <span>Cart</span>
+    <span>Signup / Login</span>
+  </nav>
+</header>
+
+
+<main class="container checkout-review" role="region" aria-label="Order review">
+  <h2 class="heading">Delivery Information</h2>
+  <section class="card address-block" aria-label="Shipping destination">
+    <h3>Ship To</h3>
+    <p>Jane Customer</p><p>42 Practice Street</p><p>Automation City, CA 90001</p>
+  </section>
+  <section class="card order-review" aria-label="Purchase summary">
+    <h3>Order Summary</h3>
+    <article data-product-id="1"><span data-href="/product_details/1">Blue Top</span> <span>Rs. 500</span></article>
+    <article data-product-id="2"><span data-href="/product_details/2">Men Tshirt</span> <span>Rs. 400</span></article>
+    <p>Total Payable: <strong>Rs. 900</strong></p>
+  </section>
+  <div class="confirm-order-action" role="button" tabindex="0" aria-label="Confirm order">Confirm Order</div>
+</main>
+
+</body>
+</html>

@@ -5,12 +5,13 @@ import com.visual.model.PageIdentity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.visual.config.XealeniumRuntimeProperties;
 import java.io.File;
 import java.util.*;
 public class BaselineStore {
     private final File f;
     private final ObjectMapper m;
-    public BaselineStore(){this("visual-baseline.json");}
+    public BaselineStore(){this(XealeniumRuntimeProperties.get("visual.baseline.path", "visual-baseline.json"));}
     public BaselineStore(String p){f=new File(p);m=new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);}
     public synchronized boolean saveIfAbsent(ElementSnapshot s){
         return save(s, false);
@@ -29,6 +30,8 @@ public class BaselineStore {
                 all.remove(existingIndex);
             }
             all.add(s);
+            File parent = f.getParentFile();
+            if (parent != null) parent.mkdirs();
             m.writeValue(f,all);
             return true;
         }

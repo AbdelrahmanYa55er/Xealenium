@@ -64,7 +64,13 @@ public class HeatmapRenderer {
 
     public static void render(BufferedImage bg, List<Candidate> candidates, int bestIdx, String locator, String outputPath) {
         BufferedImage img = renderImage(bg, candidates, bestIdx, locator);
-        try { ImageIO.write(img, "png", new File(outputPath)); System.out.println("[HEATMAP] Saved: " + outputPath); }
+        try {
+            File outputFile = new File(outputPath);
+            File parent = outputFile.getParentFile();
+            if (parent != null) parent.mkdirs();
+            ImageIO.write(img, "png", outputFile);
+            System.out.println("[HEATMAP] Saved: " + outputPath);
+        }
         catch (Exception e) { System.err.println("[HEATMAP] Failed to save overlay: " + e.getMessage()); }
     }
 }

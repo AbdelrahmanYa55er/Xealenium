@@ -2,9 +2,11 @@ package com.visual.engine;
 
 import com.visual.report.HeatmapRenderer;
 import com.visual.report.ReportEntry;
+import com.visual.config.XealeniumRuntimeProperties;
 
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +17,11 @@ public class HealingReporter {
     public String writeHeatmap(String key, int healCount, BufferedImage image,
                                List<HeatmapRenderer.Candidate> candidates, int displayIdx) {
         String safe = key.replaceAll("[^a-zA-Z0-9]", "_");
-        String heatmapFile = "visual-heatmap-" + safe + "-" + healCount + ".png";
+        String heatmapName = "visual-heatmap-" + safe + "-" + healCount + ".png";
+        String heatmapDir = XealeniumRuntimeProperties.get("visual.heatmap.dir");
+        String heatmapFile = heatmapDir.isBlank()
+            ? heatmapName
+            : Path.of(heatmapDir, heatmapName).toString();
         HeatmapRenderer.render(image, candidates, displayIdx, key, heatmapFile);
         return heatmapFile;
     }
@@ -45,15 +51,37 @@ public class HealingReporter {
             sb.append("<h3>Failed Locator: <span class='loc'>" + reportEntry.originalLocator + "</span></h3>");
             sb.append("<p><strong>New Healed Locator:</strong> <span class='loc'>" + reportEntry.newLocator + "</span></p>");
             sb.append("<p><strong>Score:</strong> " + statusHtml + "</p>");
-            sb.append("<img src='" + reportEntry.heatmapFilename + "' alt='Heatmap' />");
+            sb.append("<img src='" + heatmapSrc(reportEntry.heatmapFilename, outputPath) + "' alt='Heatmap' />");
             sb.append("</div>");
         }
         sb.append("</body></html>");
         try {
-            Files.write(Paths.get(outputPath), sb.toString().getBytes());
+            Path reportPath = Paths.get(outputPath);
+            Path parent = reportPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.write(reportPath, sb.toString().getBytes());
             System.out.println("[REPORT] Generated visual healing report -> " + outputPath);
         } catch (Exception e) {
             System.err.println("[REPORT] Failed to generate: " + e.getMessage());
         }
+    }
+
+    private static String heatmapSrc(String heatmapFilename, String reportOutputPath) {
+        if (heatmapFilename == null || heatmapFilename.isBlank()) {
+            return "";
+        }
+        try {
+            Path reportPath = Paths.get(reportOutputPath).toAbsolutePath().normalize();
+            Path reportParent = reportPath.getParent();
+            Path heatmapPath = Paths.get(heatmapFilename).toAbsolutePath().normalize();
+            if (reportParent != null) {
+                return reportParent.relativize(heatmapPath).toString().replace('\\', '/');
+            }
+        } catch (RuntimeException ignored) {
+            // Fall back to the stored filename if paths cannot be relativized.
+        }
+        return heatmapFilename.replace('\\', '/');
     }
 }

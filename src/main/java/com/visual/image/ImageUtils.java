@@ -42,7 +42,7 @@ public final class ImageUtils {
             "return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);") );
 
         if (totalWidth <= viewportWidth && totalHeight <= viewportHeight) {
-            return ImageIO.read(new ByteArrayInputStream(screenshotBytes(driver)));
+            return screenshotCssImage(driver, (int) viewportWidth, (int) viewportHeight);
         }
 
         long originalX = jsLong(js, "return window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0;");
@@ -112,6 +112,17 @@ public final class ImageUtils {
              return screenshotBytes(((VisualDriver) driver).getWrapped());
         }
         throw new RuntimeException("Cannot take screenshot from driver: " + driver.getClass().getName());
+    }
+
+    private static BufferedImage screenshotCssImage(WebDriver driver, int cssWidth, int cssHeight) throws IOException {
+        BufferedImage raw = ImageIO.read(new ByteArrayInputStream(screenshotBytes(driver)));
+        if (raw == null || cssWidth <= 0 || cssHeight <= 0) {
+            return raw;
+        }
+        if (raw.getWidth() == cssWidth && raw.getHeight() == cssHeight) {
+            return raw;
+        }
+        return scale(raw, cssWidth, cssHeight);
     }
 
     public static BufferedImage crop(BufferedImage src,int x,int y,int w,int h){

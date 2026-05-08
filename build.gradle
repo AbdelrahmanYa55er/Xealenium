@@ -33,6 +33,10 @@ def updatedUrl = file('pages/updated.html').toURI().toString()
 def profileBaselineUrl = file('pages/profile_baseline.html').toURI().toString()
 def profileUpdatedUrl = file('pages/profile_updated.html').toURI().toString()
 def embeddingModelPath = file('models/gte-small-onnx/model.onnx').path
+def aeCompetitionOutputDir = 'test-outputs/xealenium/automation-exercise'
+def aeCompetitionBaselinePath = "${aeCompetitionOutputDir}/visual-baseline.json"
+def aeCompetitionReportPath = "${aeCompetitionOutputDir}/visual-healing-report.html"
+def aeCompetitionHeatmapDir = "${aeCompetitionOutputDir}/heatmaps"
 
 test {
     useJUnitPlatform()
@@ -159,4 +163,70 @@ tasks.register('realProfileRunHealing', Test) {
 
 tasks.register('realProfileRunHealingWithEmbeddings', Test) {
     configureRealProfileTask(delegate, 'Run the real profile full-cycle healing scenario with local embeddings enabled.', 'healing', false, true, 0.70)
+}
+
+def configureAeCompetitionTask = { task, taskName, testClass, captureBaseline, embeddingsEnabled ->
+    task.group = 'xealenium'
+    task.description = taskName
+    task.testClassesDirs = sourceSets.test.output.classesDirs
+    task.classpath = sourceSets.test.runtimeClasspath
+    task.useJUnitPlatform()
+    task.filter {
+        includeTestsMatching testClass
+    }
+    if (System.getProperty('headless') != null) {
+        task.systemProperty 'headless', System.getProperty('headless')
+    }
+    task.systemProperty 'report', System.getProperty('report', 'true')
+    task.systemProperty 'interactive', System.getProperty('interactive', 'false')
+    task.systemProperty 'visual.baseline.path', System.getProperty('visual.baseline.path', aeCompetitionBaselinePath)
+    task.systemProperty 'visual.report.path', System.getProperty('visual.report.path', aeCompetitionReportPath)
+    task.systemProperty 'visual.heatmap.dir', System.getProperty('visual.heatmap.dir', aeCompetitionHeatmapDir)
+    task.systemProperty 'visual.captureBaseline', String.valueOf(captureBaseline)
+    task.systemProperty 'visual.captureBaseline.refresh', String.valueOf(captureBaseline)
+    task.systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', String.valueOf(embeddingsEnabled))
+    task.systemProperty 'visual.embedding.modelName', System.getProperty('visual.embedding.modelName', embeddingsEnabled ? 'gte-small' : '')
+    task.systemProperty 'visual.embedding.modelPath', System.getProperty('visual.embedding.modelPath', embeddingsEnabled ? embeddingModelPath : '')
+    task.systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', embeddingsEnabled ? embeddingModelPath : '')
+    task.outputs.upToDateWhen { false }
+}
+
+tasks.register('aeCompetitionCaptureBaseline', Test) {
+    configureAeCompetitionTask(delegate,
+        'Capture Automation Exercise competition baseline snapshots from local fixtures.',
+        'com.demo.automationexercise.AutomationExerciseBaselineCaptureTest',
+        true,
+        false)
+    doFirst {
+        delete file(aeCompetitionOutputDir)
+    }
+}
+
+tasks.register('aeCompetitionCaptureBaselineWithEmbeddings', Test) {
+    configureAeCompetitionTask(delegate,
+        'Capture Automation Exercise competition baseline snapshots with local embeddings enabled.',
+        'com.demo.automationexercise.AutomationExerciseBaselineCaptureTest',
+        true,
+        true)
+    doFirst {
+        delete file(aeCompetitionOutputDir)
+    }
+}
+
+tasks.register('aeCompetitionRunHealing', Test) {
+    configureAeCompetitionTask(delegate,
+        'Run Automation Exercise competition healing against local drifted fixtures.',
+        'com.demo.automationexercise.AutomationExerciseE2EHealingTest',
+        false,
+        false)
+    dependsOn tasks.named('aeCompetitionCaptureBaseline')
+}
+
+tasks.register('aeCompetitionRunHealingWithEmbeddings', Test) {
+    configureAeCompetitionTask(delegate,
+        'Run Automation Exercise competition healing with local embeddings enabled.',
+        'com.demo.automationexercise.AutomationExerciseE2EHealingTest',
+        false,
+        true)
+    dependsOn tasks.named('aeCompetitionCaptureBaselineWithEmbeddings')
 }
