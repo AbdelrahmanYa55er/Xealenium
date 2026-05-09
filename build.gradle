@@ -36,6 +36,7 @@ def embeddingModelPath = file('models/gte-small-onnx/model.onnx').path
 def aeCompetitionOutputDir = 'test-outputs/xealenium/automation-exercise'
 def aeCompetitionBaselinePath = "${aeCompetitionOutputDir}/visual-baseline.json"
 def aeCompetitionReportPath = "${aeCompetitionOutputDir}/visual-healing-report.html"
+def aeCompetitionJsonReportPath = "${aeCompetitionOutputDir}/visual-healing-report.json"
 def aeCompetitionHeatmapDir = "${aeCompetitionOutputDir}/heatmaps"
 
 test {
@@ -181,6 +182,7 @@ def configureAeCompetitionTask = { task, taskName, testClass, captureBaseline, e
     task.systemProperty 'interactive', System.getProperty('interactive', 'false')
     task.systemProperty 'visual.baseline.path', System.getProperty('visual.baseline.path', aeCompetitionBaselinePath)
     task.systemProperty 'visual.report.path', System.getProperty('visual.report.path', aeCompetitionReportPath)
+    task.systemProperty 'visual.report.json.path', System.getProperty('visual.report.json.path', aeCompetitionJsonReportPath)
     task.systemProperty 'visual.heatmap.dir', System.getProperty('visual.heatmap.dir', aeCompetitionHeatmapDir)
     task.systemProperty 'visual.captureBaseline', String.valueOf(captureBaseline)
     task.systemProperty 'visual.captureBaseline.refresh', String.valueOf(captureBaseline)

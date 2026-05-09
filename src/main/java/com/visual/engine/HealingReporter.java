@@ -1,8 +1,11 @@
 package com.visual.engine;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.visual.config.XealeniumRuntimeProperties;
+import com.visual.model.CandidateScore;
 import com.visual.report.HeatmapRenderer;
 import com.visual.report.ReportEntry;
-import com.visual.config.XealeniumRuntimeProperties;
 
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
@@ -30,6 +33,10 @@ public class HealingReporter {
         REPORTS.add(new ReportEntry(originalLocator, newLocator, score, heatmapFilename));
     }
 
+    public void record(String originalLocator, CandidateScore candidate, String heatmapFilename) {
+        REPORTS.add(new ReportEntry(originalLocator, candidate, heatmapFilename));
+    }
+
     public static void generateHtmlReport(String outputPath) {
         StringBuilder sb = new StringBuilder();
         sb.append("<html><head><title>Visual Healing Report</title>");
@@ -38,7 +45,8 @@ public class HealingReporter {
         sb.append("img{max-width:100%;border:1px solid #e4e4e7;border-radius:4px;margin-top:1rem;} ");
         sb.append(".score{display:inline-block;padding:0.25rem 0.5rem;border-radius:4px;font-weight:bold;color:#fff;} ");
         sb.append(".high{background:#10b981;} .mid{background:#f59e0b;} .low{background:#ef4444;} ");
-        sb.append("h3{margin-top:0;color:#18181b;} .loc{font-family:monospace;background:#f4f4f5;padding:0.2rem 0.4rem;border-radius:3px;}</style>");
+        sb.append("h3{margin-top:0;color:#18181b;} .loc{font-family:monospace;background:#f4f4f5;padding:0.2rem 0.4rem;border-radius:3px;} ");
+        sb.append(".meta{color:#52525b;font-size:0.95rem;} .components{font-family:monospace;font-size:0.9rem;color:#3f3f46;}</style>");
         sb.append("</head><body>");
         sb.append("<h1>Xealenium - Visual Healing Report</h1>");
         if (REPORTS.isEmpty()) {
@@ -51,6 +59,21 @@ public class HealingReporter {
             sb.append("<h3>Failed Locator: <span class='loc'>" + reportEntry.originalLocator + "</span></h3>");
             sb.append("<p><strong>New Healed Locator:</strong> <span class='loc'>" + reportEntry.newLocator + "</span></p>");
             sb.append("<p><strong>Score:</strong> " + statusHtml + "</p>");
+            if (reportEntry.accepted) {
+                sb.append("<p class='meta'><strong>Strategy:</strong> " + reportEntry.selectorStrategy
+                    + " &nbsp; <strong>Kind:</strong> " + reportEntry.candidateKind
+                    + " &nbsp; <strong>Accessible name:</strong> " + reportEntry.accessibleName + "</p>");
+                sb.append("<p class='components'>visual=" + format(reportEntry.visualScore)
+                    + " position=" + format(reportEntry.positionScore)
+                    + " text=" + format(reportEntry.textScore)
+                    + " kind=" + format(reportEntry.kindScore)
+                    + " sequence=" + format(reportEntry.sequenceScore)
+                    + " role=" + format(reportEntry.roleScore)
+                    + " autocomplete=" + format(reportEntry.autocompleteScore)
+                    + " semantic=" + format(reportEntry.semanticScore)
+                    + " field=" + format(reportEntry.fieldScore)
+                    + " embedding=" + format(reportEntry.embeddingScore) + "</p>");
+            }
             sb.append("<img src='" + heatmapSrc(reportEntry.heatmapFilename, outputPath) + "' alt='Heatmap' />");
             sb.append("</div>");
         }
@@ -65,6 +88,26 @@ public class HealingReporter {
             System.out.println("[REPORT] Generated visual healing report -> " + outputPath);
         } catch (Exception e) {
             System.err.println("[REPORT] Failed to generate: " + e.getMessage());
+        }
+        String jsonOutputPath = XealeniumRuntimeProperties.get("visual.report.json.path");
+        if (!jsonOutputPath.isBlank()) {
+            generateJsonReport(jsonOutputPath);
+        }
+    }
+
+    public static void generateJsonReport(String outputPath) {
+        try {
+            Path reportPath = Paths.get(outputPath);
+            Path parent = reportPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            new ObjectMapper()
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .writeValue(reportPath.toFile(), REPORTS);
+            System.out.println("[REPORT] Generated visual healing JSON report -> " + outputPath);
+        } catch (Exception e) {
+            System.err.println("[REPORT] Failed to generate JSON: " + e.getMessage());
         }
     }
 
@@ -83,5 +126,9 @@ public class HealingReporter {
             // Fall back to the stored filename if paths cannot be relativized.
         }
         return heatmapFilename.replace('\\', '/');
+    }
+
+    private static String format(double value) {
+        return String.format(java.util.Locale.US, "%.3f", value);
     }
 }

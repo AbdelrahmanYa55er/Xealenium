@@ -133,7 +133,7 @@ public class VisualHealingEngine {
     private ScoreResult healAndReport(String key, CandidateScore cand, int totalCands, BufferedImage img, List<HeatmapRenderer.Candidate> heatCands, int displayIdx) {
         healCount++;
         String heatmapFile = healingReporter.writeHeatmap(key, healCount, img, heatCands, displayIdx);
-        healingReporter.record(key, cand.getSelector(), cand.getScore(), heatmapFile);
+        healingReporter.record(key, cand, heatmapFile);
         ScoreResult r=ScoreResult.healed(cand.getScore(), cand.getVis(), cand.getPos(), cand.getTxt(), totalCands, cand.getCx(), cand.getCy(), cand.getOriginalIndex());
         System.out.println("[VISUAL-HEAL] "+key+" | "+r+" kind="+cand.getKind()+" seq="+cand.getSequence()+" kindScore="+String.format("%.2f", cand.getKindScore())+" seqScore="+String.format("%.2f", cand.getSeqScore()));
         return r;

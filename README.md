@@ -88,6 +88,8 @@ Current HTML assets in [`pages`](pages):
   - refusal pair where no comparable control remains
 - `semantic_signals.html`
   - focused semantic extraction and locator fixture
+- `AutomationExercise/Baseline` / `AutomationExercise/Updated`
+  - local offline ecommerce fixtures for the competition-style full E2E healing demo
 
 ## Quick Start
 
@@ -329,6 +331,25 @@ With `interactive=true`, Swing review shows:
 - smart locator
 - full-page heatmap
 
+Default test resource config keeps `interactive=false` so Gradle and CI-style runs do not block on Swing dialogs. Enable it only when you want manual review:
+
+```powershell
+.\gradlew.bat --no-daemon runHealingWithEmbeddings -Dinteractive=true
+```
+
+## Runtime Configuration
+
+`src/test/resources/xealenium.properties` is the main local defaults file. System properties still win over file values, so one-off runs can override any setting with `-D...`.
+
+Useful keys:
+
+- `headless=false` opens Chrome normally; set `-Dheadless=true` for headless learning/healing.
+- `interactive=false` keeps runs automated; set `-Dinteractive=true` for Swing review.
+- `visual.threshold=0.70` controls the acceptance threshold.
+- `visual.baseline.path`, `visual.report.path`, and `visual.heatmap.dir` can isolate scenario artifacts.
+- `visual.report.json.path` optionally writes a structured JSON healing report.
+- `visual.weight.*` and `visual.scoring.maxDistance` expose scorer weights while preserving the current defaults.
+
 ## Output Files
 
 Generated locally:
@@ -336,8 +357,17 @@ Generated locally:
 - `visual-baseline.json`
 - `visual-heatmap-*.png`
 - `visual-healing-report.html`
+- optional `visual-healing-report.json` when `visual.report.json.path` is set
 
 These are not part of the committed source.
+
+The Automation Exercise competition tasks isolate outputs under:
+
+```text
+test-outputs/xealenium/automation-exercise/
+```
+
+That folder contains the scenario baseline, HTML report, optional JSON report, and heatmaps for the local E2E demo.
 
 ## Benchmark Suites
 
@@ -346,6 +376,8 @@ Main benchmark entry points:
 - `com.demo.benchmark.VisualPageMatrixTests`
 - `com.demo.benchmark.HybridRecoveryModeTests`
 - `com.demo.benchmark.RefusalBenchmarkTests`
+- `com.demo.automationexercise.AutomationExerciseBaselineCaptureTest`
+- `com.demo.automationexercise.AutomationExerciseE2EHealingTest`
 
 These prove:
 
@@ -353,11 +385,13 @@ These prove:
 - Healenium recovery on soft drift
 - Xealenium-only recovery on hard drift
 - Xealenium refusal when confidence is too low
+- deterministic local ecommerce healing with isolated artifacts
 
 If you want the benchmark-style setup pattern, see:
 
 - [`VisualPageMatrixTests.java`](src/test/java/com/demo/benchmark/VisualPageMatrixTests.java)
 - [`HybridRecoveryModeTests.java`](src/test/java/com/demo/benchmark/HybridRecoveryModeTests.java)
+- [`AutomationExerciseE2EHealingTest.java`](src/test/java/com/demo/automationexercise/AutomationExerciseE2EHealingTest.java)
 
 ## Recommended Commands
 
@@ -371,6 +405,11 @@ If you want the benchmark-style setup pattern, see:
 
 ```powershell
 .\gradlew.bat --no-daemon --rerun-tasks test --tests "com.demo.benchmark.RefusalBenchmarkTests"
+```
+
+```powershell
+.\gradlew.bat --no-daemon aeCompetitionCaptureBaseline
+.\gradlew.bat --no-daemon aeCompetitionRunHealingWithEmbeddings
 ```
 
 ## Limitations

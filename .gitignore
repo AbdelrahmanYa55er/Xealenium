@@ -6,6 +6,8 @@ build/
 *.png
 visual-baseline.json
 visual-healing-report.html
+visual-healing-report.json
+test-outputs/
 bin/
 models/*
 !models/README.md

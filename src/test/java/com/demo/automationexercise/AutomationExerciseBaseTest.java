@@ -100,6 +100,10 @@ public abstract class AutomationExerciseBaseTest {
         assertTrue(VisualHealingEngine.REPORTS.stream()
             .allMatch(entry -> Files.exists(Path.of(entry.heatmapFilename))),
             "each healing report entry should have a generated heatmap");
+        String jsonReportPath = XealeniumRuntimeProperties.get("visual.report.json.path");
+        if (!jsonReportPath.isBlank()) {
+            assertTrue(Files.exists(Path.of(jsonReportPath)), "JSON healing report should exist");
+        }
     }
 
     protected void printHealingSummary() {
@@ -158,6 +162,7 @@ public abstract class AutomationExerciseBaseTest {
             "visual.threshold",
             "visual.baseline.path",
             "visual.report.path",
+            "visual.report.json.path",
             "visual.heatmap.dir",
             "visual.embedding.enabled",
             "visual.embedding.modelName",
