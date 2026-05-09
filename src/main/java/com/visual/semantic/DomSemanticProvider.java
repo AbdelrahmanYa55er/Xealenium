@@ -30,6 +30,7 @@ public class DomSemanticProvider implements SemanticProvider {
             meta.sectionContext,
             meta.parentContext,
             meta.inputType,
+            meta.pageRegion,
             "dom"
         );
     }
@@ -48,7 +49,8 @@ public class DomSemanticProvider implements SemanticProvider {
             str(meta.get("descriptionText")),
             str(meta.get("sectionContext")),
             str(meta.get("parentContext")),
-            str(meta.get("inputType"))
+            str(meta.get("inputType")),
+            str(meta.get("pageRegion"))
         );
     }
 

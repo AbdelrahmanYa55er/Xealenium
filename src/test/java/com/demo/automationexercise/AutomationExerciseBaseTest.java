@@ -74,6 +74,10 @@ public abstract class AutomationExerciseBaseTest {
         openPage(AutomationExercisePageSupport.updatedUrl(fileName), "Updated/" + fileName);
     }
 
+    protected void openRefusalPage(String fileName) {
+        openPage(AutomationExercisePageSupport.refusalUrl(fileName), "Refusal/" + fileName);
+    }
+
     protected void step(String action) {
         System.out.println("[AE-" + flowName() + "] " + action);
     }

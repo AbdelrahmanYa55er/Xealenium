@@ -90,6 +90,8 @@ Current HTML assets in [`pages`](pages):
   - focused semantic extraction and locator fixture
 - `AutomationExercise/Baseline` / `AutomationExercise/Updated`
   - local offline ecommerce fixtures for the competition-style full E2E healing demo
+- `AutomationExercise/Refusal`
+  - local negative fixture where the Blue Top add-to-cart business target is intentionally absent
 
 ## Quick Start
 
@@ -349,6 +351,7 @@ Useful keys:
 - `visual.baseline.path`, `visual.report.path`, and `visual.heatmap.dir` can isolate scenario artifacts.
 - `visual.report.json.path` optionally writes a structured JSON healing report.
 - `visual.weight.*` and `visual.scoring.maxDistance` expose scorer weights while preserving the current defaults.
+- `visual.safety.region.*` controls region safety, which prevents healing to the right word in the wrong page area, for example a product-card action drifting into global navigation.
 
 ## Output Files
 
@@ -373,6 +376,12 @@ For the AE competition healing task, it also contains:
 
 - `healing-accuracy-summary.md`
   - an ordered target-check table comparing each old baseline locator with the expected healed business target, actual healed locator, strategy, score, and pass/fail result
+
+The AE refusal task writes separate artifacts under:
+
+```text
+test-outputs/xealenium/automation-exercise-refusal/
+```
 
 ## Benchmark Suites
 
@@ -415,6 +424,10 @@ If you want the benchmark-style setup pattern, see:
 ```powershell
 .\gradlew.bat --no-daemon aeCompetitionCaptureBaseline
 .\gradlew.bat --no-daemon aeCompetitionRunHealingWithEmbeddings
+```
+
+```powershell
+.\gradlew.bat --no-daemon aeCompetitionRunRefusalWithEmbeddings
 ```
 
 ## Limitations

@@ -10,10 +10,18 @@ public final class DomSemanticMetadata {
     public final String sectionContext;
     public final String parentContext;
     public final String inputType;
+    public final String pageRegion;
 
     public DomSemanticMetadata(String accessibleName, String semanticRole, String autocomplete, String labelText,
                                String placeholder, String descriptionText, String sectionContext,
                                String parentContext, String inputType) {
+        this(accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText,
+            sectionContext, parentContext, inputType, "");
+    }
+
+    public DomSemanticMetadata(String accessibleName, String semanticRole, String autocomplete, String labelText,
+                               String placeholder, String descriptionText, String sectionContext,
+                               String parentContext, String inputType, String pageRegion) {
         this.accessibleName = accessibleName;
         this.semanticRole = semanticRole;
         this.autocomplete = autocomplete;
@@ -23,5 +31,6 @@ public final class DomSemanticMetadata {
         this.sectionContext = sectionContext;
         this.parentContext = parentContext;
         this.inputType = inputType;
+        this.pageRegion = pageRegion;
     }
 }

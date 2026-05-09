@@ -174,6 +174,21 @@ public final class BrowserSemanticScripts {
           if (attr(el, 'contenteditable').toLowerCase() === 'true') return 'contenteditable';
           return el.tagName.toLowerCase();
         }
+        function pageRegion(el) {
+          if (!el) return 'unknown';
+          var explicit = el.closest('[data-xealenium-region], [data-region]');
+          if (explicit) return attr(explicit, 'data-xealenium-region') || attr(explicit, 'data-region');
+          if (el.closest('header, nav, [role="navigation"], [role="banner"], .navbar, .shop-menu')) return 'global-nav';
+          if (el.closest('footer, [role="contentinfo"]')) return 'footer';
+          if (el.closest('aside, [role="complementary"], .sidebar, .left-sidebar')) return 'sidebar';
+          if (el.closest('[data-product-id], .productinfo, .single-products, .product-image-wrapper, .catalog-card, .product-card')) return 'product-card';
+          if (el.closest('#cart_info, .cart_info, .cart-list, .cart-item, .cart-card, [data-cart-item]')) return 'cart';
+          if (el.closest('.checkout, .checkout-information, [data-qa="checkout-info"]')) return 'checkout';
+          if (el.closest('.payment, .payment-form, [data-qa="pay-button"]')) return 'payment';
+          if (el.closest('form, [role="form"], .login-form, .signup-form, .contact-form')) return 'form';
+          if (el.closest('main, [role="main"], section, [role="region"]')) return 'main';
+          return 'unknown';
+        }
         function selectHint(el) {
           var role = attr(el, 'role').toLowerCase();
           if (role === 'combobox' || role === 'listbox') return true;
@@ -339,7 +354,8 @@ public final class BrowserSemanticScripts {
               descriptionText: descriptionText(el),
               sectionContext: nearestSectionText(el),
               parentContext: parentContext(el),
-              inputType: controlType(el)
+              inputType: controlType(el),
+              pageRegion: pageRegion(el)
             };
         """;
     }

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automation Exercise - Product Catalog</title>
+  <link rel="stylesheet" href="../assets/static/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../assets/static/css/font-awesome.min.css">
+  <link rel="stylesheet" href="../assets/static/css/main.css">
+  <link rel="stylesheet" href="../assets/static/css/responsive.css">
+  <link rel="stylesheet" href="../assets/css/automation-exercise-fixture.css">
+</head>
+<body>
+  <header id="header">
+    <div class="header-middle">
+      <div class="container">
+        <div class="row">
+          <div class="col-sm-4">
+            <div class="logo pull-left">
+              <a href="/"><strong class="fixture-logo">Automation</strong><span>Exercise</span></a>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="shop-menu pull-right">
+              <ul class="nav navbar-nav">
+                <li><a href="/"><i class="fa fa-home"></i> Home</a></li>
+                <li><a href="/products"><i class="fa fa-shopping-bag"></i> Products</a></li>
+                <li><a href="/view_cart"><i class="fa fa-shopping-cart"></i> Cart</a></li>
+                <li><a href="/login"><i class="fa fa-lock"></i> Signup / Login</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container fixture-page">
+    <section class="features_items catalog-maintenance" aria-labelledby="catalog-title">
+      <h2 id="catalog-title" class="title text-center">Seasonal Collection</h2>
+      <div class="alert alert-warning" role="status" aria-label="Catalog availability notice">
+        Blue Top is no longer available in this release. The product card and its cart action were removed from the active catalog.
+      </div>
+
+      <div class="row product-grid">
+        <article class="col-sm-4 catalog-card" data-product-id="2">
+          <div class="product-image-wrapper">
+            <div class="single-products">
+              <div class="productinfo text-center">
+                <img src="../assets/product_images/2.jpg" alt="Men Tshirt">
+                <h2>Rs. 400</h2>
+                <p>Men Tshirt</p>
+                <span class="fixture-muted">Available in store only</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="col-sm-4 catalog-card" data-product-id="3">
+          <div class="product-image-wrapper">
+            <div class="single-products">
+              <div class="productinfo text-center">
+                <img src="../assets/product_images/3.jpg" alt="Sleeveless Dress">
+                <h2>Rs. 1000</h2>
+                <p>Sleeveless Dress</p>
+                <span class="fixture-muted">Preview item</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="col-sm-4 catalog-card" data-product-id="4">
+          <div class="product-image-wrapper">
+            <div class="single-products">
+              <div class="productinfo text-center">
+                <img src="../assets/product_images/4.jpg" alt="Stylish Dress">
+                <h2>Rs. 1500</h2>
+                <p>Stylish Dress</p>
+                <span class="fixture-muted">Temporarily paused</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="fixture-footer">
+    <div class="container">
+      <p>Automation Exercise local refusal fixture. Important target elements are intentionally absent.</p>
+    </div>
+  </footer>
+</body>
+</html>

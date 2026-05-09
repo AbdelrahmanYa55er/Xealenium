@@ -53,16 +53,17 @@ final class CandidateMetadataCollector {
             String sectionContext = signals.getSectionContext();
             String parentContext = signals.getParentContext();
             String inputType = signals.getInputType();
+            String pageRegion = signals.getPageRegion();
             String text = raw.getText();
             String fingerprint = EmbeddingFingerprintBuilder.build(key, kind, tagName, accessibleName, semanticRole, autocomplete,
-                labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, text);
+                labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, text, pageRegion);
             String fieldIdentity = EmbeddingFingerprintBuilder.buildFieldIdentity(
                 accessibleName, labelText, placeholder, autocomplete, inputType, text);
             float[] embeddingVector = embeddingsActive ? embeddingService.embed(fingerprint) : null;
             float[] fieldEmbeddingVector = embeddingsActive ? embeddingService.embed(fieldIdentity) : null;
             candidates.add(new CandidateMetadata(index, x, y, w, h, text, raw.getSelector(), kind, tagName,
                 accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText,
-                sectionContext, parentContext, inputType, fingerprint, fieldIdentity, embeddingVector, fieldEmbeddingVector));
+                sectionContext, parentContext, inputType, pageRegion, fingerprint, fieldIdentity, embeddingVector, fieldEmbeddingVector));
         }
         return candidates;
     }

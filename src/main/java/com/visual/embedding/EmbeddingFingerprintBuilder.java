@@ -16,18 +16,26 @@ public final class EmbeddingFingerprintBuilder {
         }
         return build(locator, snapshot.kind, snapshot.tagName, snapshot.accessibleName, snapshot.semanticRole,
             snapshot.autocomplete, snapshot.labelText, snapshot.placeholder, snapshot.descriptionText,
-            snapshot.sectionContext, snapshot.parentContext, snapshot.inputType, snapshot.text);
+            snapshot.sectionContext, snapshot.parentContext, snapshot.inputType, snapshot.text, snapshot.pageRegion);
     }
 
     public static String build(String locator, String kind, String tagName, String accessibleName, String semanticRole,
                                String autocomplete, String labelText, String placeholder, String descriptionText,
                                String sectionContext, String parentContext, String inputType, String text) {
+        return build(locator, kind, tagName, accessibleName, semanticRole, autocomplete, labelText, placeholder,
+            descriptionText, sectionContext, parentContext, inputType, text, "");
+    }
+
+    public static String build(String locator, String kind, String tagName, String accessibleName, String semanticRole,
+                               String autocomplete, String labelText, String placeholder, String descriptionText,
+                               String sectionContext, String parentContext, String inputType, String text, String pageRegion) {
         List<String> parts = new ArrayList<>();
         append(parts, "locator", normalizeLocator(locator));
         append(parts, "locator_tokens", locatorTokens(locator));
         append(parts, "kind", kind);
         append(parts, "tag", tagName);
         append(parts, "role", semanticRole);
+        append(parts, "page_region", pageRegion);
         append(parts, "input_type", inputType);
         append(parts, "accessible_name", accessibleName);
         append(parts, "label_text", labelText);
@@ -39,9 +47,9 @@ public final class EmbeddingFingerprintBuilder {
         append(parts, "text", text);
         append(parts, "field_identity", buildFieldIdentity(accessibleName, labelText, placeholder, autocomplete, inputType, text, locator));
         append(parts, "control_identity", joinSignals(kind, semanticRole, inputType, tagName));
-        append(parts, "context_identity", joinSignals(sectionContext, parentContext, descriptionText));
+        append(parts, "context_identity", joinSignals(pageRegion, sectionContext, parentContext, descriptionText));
         append(parts, "semantic_summary", semanticSummary(kind, tagName, semanticRole, inputType, accessibleName,
-            labelText, placeholder, descriptionText, autocomplete, sectionContext, parentContext, text));
+            labelText, placeholder, descriptionText, autocomplete, sectionContext, parentContext, text, pageRegion));
         return String.join("\n", parts);
     }
 
@@ -103,11 +111,12 @@ public final class EmbeddingFingerprintBuilder {
     private static String semanticSummary(String kind, String tagName, String semanticRole, String inputType,
                                           String accessibleName, String labelText, String placeholder,
                                           String descriptionText, String autocomplete, String sectionContext,
-                                          String parentContext, String text) {
+                                          String parentContext, String text, String pageRegion) {
         List<String> clauses = new ArrayList<>();
         appendSentence(clauses, normalize(kind).isBlank() ? "" : normalize(kind) + " control");
         appendSentence(clauses, normalize(semanticRole).isBlank() ? "" : "role " + normalize(semanticRole));
         appendSentence(clauses, normalize(tagName).isBlank() ? "" : "tag " + normalize(tagName));
+        appendSentence(clauses, normalize(pageRegion).isBlank() ? "" : "region " + normalize(pageRegion));
         appendSentence(clauses, normalize(inputType).isBlank() ? "" : "input type " + normalize(inputType));
         appendSentence(clauses, normalize(accessibleName).isBlank() ? "" : "named " + normalize(accessibleName));
         appendSentence(clauses, normalize(labelText).isBlank() ? "" : "label " + normalize(labelText));

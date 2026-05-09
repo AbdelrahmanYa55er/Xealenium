@@ -67,6 +67,7 @@ final class BaselineCaptureService {
                     signals.getParentContext(),
                     signals.getInputType()
                 )
+                .withPageRegion(signals.getPageRegion())
                 .withPageIdentity(pageIdentity);
 
             String fingerprint = EmbeddingFingerprintBuilder.forSnapshot(locator.toString(), snapshot);

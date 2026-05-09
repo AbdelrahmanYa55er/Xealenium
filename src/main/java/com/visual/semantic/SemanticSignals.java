@@ -10,15 +10,23 @@ public class SemanticSignals {
     private final String sectionContext;
     private final String parentContext;
     private final String inputType;
+    private final String pageRegion;
     private final String source;
 
     public SemanticSignals(String accessibleName, String semanticRole, String autocomplete, String source) {
-        this(accessibleName, semanticRole, autocomplete, "", "", "", "", "", "", source);
+        this(accessibleName, semanticRole, autocomplete, "", "", "", "", "", "", "", source);
     }
 
     public SemanticSignals(String accessibleName, String semanticRole, String autocomplete,
                            String labelText, String placeholder, String descriptionText,
                            String sectionContext, String parentContext, String inputType, String source) {
+        this(accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText,
+            sectionContext, parentContext, inputType, "", source);
+    }
+
+    public SemanticSignals(String accessibleName, String semanticRole, String autocomplete,
+                           String labelText, String placeholder, String descriptionText,
+                           String sectionContext, String parentContext, String inputType, String pageRegion, String source) {
         this.accessibleName = normalize(accessibleName);
         this.semanticRole = normalize(semanticRole);
         this.autocomplete = normalize(autocomplete);
@@ -28,11 +36,12 @@ public class SemanticSignals {
         this.sectionContext = normalize(sectionContext);
         this.parentContext = normalize(parentContext);
         this.inputType = normalize(inputType);
+        this.pageRegion = normalize(pageRegion);
         this.source = normalize(source);
     }
 
     public static SemanticSignals empty(String source) {
-        return new SemanticSignals("", "", "", "", "", "", "", "", "", source);
+        return new SemanticSignals("", "", "", "", "", "", "", "", "", "", source);
     }
 
     public String getAccessibleName() {
@@ -71,6 +80,10 @@ public class SemanticSignals {
         return inputType;
     }
 
+    public String getPageRegion() {
+        return pageRegion;
+    }
+
     public String getSource() {
         return source;
     }
@@ -89,6 +102,7 @@ public class SemanticSignals {
             firstNonBlank(sectionContext, fallback.sectionContext),
             firstNonBlank(parentContext, fallback.parentContext),
             firstNonBlank(inputType, fallback.inputType),
+            firstNonBlank(pageRegion, fallback.pageRegion),
             mergeSource(source, fallback.source)
         );
     }

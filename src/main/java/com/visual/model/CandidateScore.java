@@ -20,9 +20,18 @@ public final class CandidateScore {
     private final String strategy;
     private final String kind;
     private final String accessibleName;
+    private final String pageRegion;
 
     public CandidateScore(double score, int originalIndex, String selector, String strategy, String kind, String accessibleName,
                           int sequence, double vis, double pos, double txt, double kindScore, double seqScore,
+                          double roleScore, double autocompleteScore, double semanticScore, double fieldSemanticScore,
+                          double embeddingScore, int cx, int cy) {
+        this(score, originalIndex, selector, strategy, kind, accessibleName, "", sequence, vis, pos, txt,
+            kindScore, seqScore, roleScore, autocompleteScore, semanticScore, fieldSemanticScore, embeddingScore, cx, cy);
+    }
+
+    public CandidateScore(double score, int originalIndex, String selector, String strategy, String kind, String accessibleName,
+                          String pageRegion, int sequence, double vis, double pos, double txt, double kindScore, double seqScore,
                           double roleScore, double autocompleteScore, double semanticScore, double fieldSemanticScore,
                           double embeddingScore, int cx, int cy) {
         this.score = score;
@@ -31,6 +40,7 @@ public final class CandidateScore {
         this.strategy = strategy;
         this.kind = kind;
         this.accessibleName = accessibleName;
+        this.pageRegion = pageRegion;
         this.sequence = sequence;
         this.vis = vis;
         this.pos = pos;
@@ -65,4 +75,5 @@ public final class CandidateScore {
     public String getStrategy() { return strategy; }
     public String getKind() { return kind; }
     public String getAccessibleName() { return accessibleName; }
+    public String getPageRegion() { return pageRegion; }
 }

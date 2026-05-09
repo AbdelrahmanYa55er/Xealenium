@@ -34,11 +34,15 @@ def profileBaselineUrl = file('pages/profile_baseline.html').toURI().toString()
 def profileUpdatedUrl = file('pages/profile_updated.html').toURI().toString()
 def embeddingModelPath = file('models/gte-small-onnx/model.onnx').path
 def aeCompetitionOutputDir = 'test-outputs/xealenium/automation-exercise'
+def aeCompetitionRefusalOutputDir = 'test-outputs/xealenium/automation-exercise-refusal'
 def aeCompetitionBaselinePath = "${aeCompetitionOutputDir}/visual-baseline.json"
 def aeCompetitionReportPath = "${aeCompetitionOutputDir}/visual-healing-report.html"
 def aeCompetitionJsonReportPath = "${aeCompetitionOutputDir}/visual-healing-report.json"
 def aeCompetitionAccuracyReportPath = "${aeCompetitionOutputDir}/healing-accuracy-summary.md"
 def aeCompetitionHeatmapDir = "${aeCompetitionOutputDir}/heatmaps"
+def aeCompetitionRefusalReportPath = "${aeCompetitionRefusalOutputDir}/visual-healing-report.html"
+def aeCompetitionRefusalJsonReportPath = "${aeCompetitionRefusalOutputDir}/visual-healing-report.json"
+def aeCompetitionRefusalHeatmapDir = "${aeCompetitionRefusalOutputDir}/heatmaps"
 
 test {
     useJUnitPlatform()
@@ -233,4 +237,19 @@ tasks.register('aeCompetitionRunHealingWithEmbeddings', Test) {
         false,
         true)
     dependsOn tasks.named('aeCompetitionCaptureBaselineWithEmbeddings')
+}
+
+tasks.register('aeCompetitionRunRefusalWithEmbeddings', Test) {
+    configureAeCompetitionTask(delegate,
+        'Run Automation Exercise competition refusal case with local embeddings enabled.',
+        'com.demo.automationexercise.AutomationExerciseRefusalTest',
+        false,
+        true)
+    systemProperty 'visual.report.path', System.getProperty('visual.report.path', aeCompetitionRefusalReportPath)
+    systemProperty 'visual.report.json.path', System.getProperty('visual.report.json.path', aeCompetitionRefusalJsonReportPath)
+    systemProperty 'visual.heatmap.dir', System.getProperty('visual.heatmap.dir', aeCompetitionRefusalHeatmapDir)
+    dependsOn tasks.named('aeCompetitionCaptureBaselineWithEmbeddings')
+    doFirst {
+        delete file(aeCompetitionRefusalOutputDir)
+    }
 }

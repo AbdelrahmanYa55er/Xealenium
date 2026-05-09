@@ -19,6 +19,7 @@ public final class CandidateMetadata {
     public final String sectionContext;
     public final String parentContext;
     public final String inputType;
+    public final String pageRegion;
     public final String fingerprint;
     public final String fieldIdentity;
     public final float[] embeddingVector;
@@ -29,6 +30,15 @@ public final class CandidateMetadata {
     public CandidateMetadata(int originalIndex, int x, int y, int w, int h, String text, String selector, String kind, String tagName,
                              String accessibleName, String semanticRole, String autocomplete, String labelText, String placeholder,
                              String descriptionText, String sectionContext, String parentContext, String inputType,
+                             String fingerprint, String fieldIdentity, float[] embeddingVector, float[] fieldEmbeddingVector) {
+        this(originalIndex, x, y, w, h, text, selector, kind, tagName, accessibleName, semanticRole, autocomplete,
+            labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, "",
+            fingerprint, fieldIdentity, embeddingVector, fieldEmbeddingVector);
+    }
+
+    public CandidateMetadata(int originalIndex, int x, int y, int w, int h, String text, String selector, String kind, String tagName,
+                             String accessibleName, String semanticRole, String autocomplete, String labelText, String placeholder,
+                             String descriptionText, String sectionContext, String parentContext, String inputType, String pageRegion,
                              String fingerprint, String fieldIdentity, float[] embeddingVector, float[] fieldEmbeddingVector) {
         this.originalIndex = originalIndex;
         this.x = x;
@@ -48,6 +58,7 @@ public final class CandidateMetadata {
         this.sectionContext = sectionContext;
         this.parentContext = parentContext;
         this.inputType = inputType;
+        this.pageRegion = pageRegion;
         this.fingerprint = fingerprint;
         this.fieldIdentity = fieldIdentity;
         this.embeddingVector = embeddingVector;

@@ -1,6 +1,7 @@
 package com.visual.engine;
 
 import com.visual.config.CandidateScoringWeights;
+import com.visual.config.RegionSafetyConfig;
 import com.visual.embedding.LocalEmbeddingService;
 import com.visual.image.ImageUtils;
 import com.visual.locator.SmartLocatorBuilder;
@@ -17,21 +18,26 @@ import org.openqa.selenium.WebElement;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 final class CandidateScorer {
     private final CandidateCollector candidateCollector;
     private final LocalEmbeddingService embeddingService;
     private final FieldAssignmentEngine fieldAssignmentEngine;
     private final CandidateScoringWeights weights;
+    private final RegionSafetyConfig regionSafety;
 
     CandidateScorer(CandidateCollector candidateCollector, LocalEmbeddingService embeddingService,
-                    FieldAssignmentEngine fieldAssignmentEngine, CandidateScoringWeights weights) {
+                    FieldAssignmentEngine fieldAssignmentEngine, CandidateScoringWeights weights,
+                    RegionSafetyConfig regionSafety) {
         this.candidateCollector = candidateCollector;
         this.embeddingService = embeddingService;
         this.fieldAssignmentEngine = fieldAssignmentEngine;
         this.weights = weights == null ? CandidateScoringWeights.builder().build() : weights;
+        this.regionSafety = regionSafety == null ? RegionSafetyConfig.builder().build() : regionSafety;
     }
 
     CandidateScoringResult score(WebDriver driver, String key, ElementSnapshot base, BufferedImage pageImage,
@@ -65,6 +71,7 @@ final class CandidateScorer {
                 + weights.getKind() * kind + weights.getSequence() * seq + weights.getRole() * role
                 + weights.getAutocomplete() * autocomplete + weights.getSemantic() * semantic
                 + weights.getField() * fieldSemantic + embeddingWeight * embedding;
+            score *= regionSafetyMultiplier(base, candidate, pos);
 
             SmartLocatorResult smartLocator = buildSmartLocator(driver, locatorBuilder, candidate);
             String selector = smartLocator != null
@@ -77,7 +84,7 @@ final class CandidateScorer {
                 candidate.text + " [" + candidate.kind + " #" + candidate.sequence + "]"
             ));
             ranked.add(new CandidateScore(score, candidate.originalIndex, selector, selectorStrategy, candidate.kind,
-                candidate.accessibleName, candidate.sequence, vis, pos, txt, kind, seq, role, autocomplete, semantic,
+                candidate.accessibleName, candidate.pageRegion, candidate.sequence, vis, pos, txt, kind, seq, role, autocomplete, semantic,
                 fieldSemantic, embedding, candidate.x + candidate.w / 2, candidate.y + candidate.h / 2));
         }
 
@@ -128,6 +135,49 @@ final class CandidateScorer {
         if (baseToken.isBlank() && candidateToken.isBlank()) return 0.50;
         if (baseToken.isBlank() || candidateToken.isBlank()) return 0.35;
         return baseToken.equals(candidateToken) ? 1.0 : 0.0;
+    }
+
+    private double regionSafetyMultiplier(ElementSnapshot base, CandidateMetadata candidate, double positionScore) {
+        if (!regionSafety.isEnabled() || positionScore > regionSafety.getMaxFarPositionScore()) {
+            return 1.0;
+        }
+        String baselineRegion = normalizeRegion(base.pageRegion);
+        String candidateRegion = normalizeRegion(candidate.pageRegion);
+        if (baselineRegion.isBlank() || candidateRegion.isBlank() || baselineRegion.equals(candidateRegion)) {
+            return 1.0;
+        }
+        if (!isBusinessRegion(baselineRegion) || !isPageChromeRegion(candidateRegion)) {
+            return 1.0;
+        }
+        double overlap = contextOverlap(base, candidate);
+        if (overlap >= regionSafety.getMinContextOverlap()) {
+            return 1.0;
+        }
+        return regionSafety.getCrossRegionPenalty();
+    }
+
+    private static boolean isBusinessRegion(String region) {
+        return switch (region) {
+            case "product-card", "cart", "checkout", "payment", "form", "main" -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean isPageChromeRegion(String region) {
+        return Objects.equals(region, "global-nav") || Objects.equals(region, "footer") || Objects.equals(region, "sidebar");
+    }
+
+    private static double contextOverlap(ElementSnapshot base, CandidateMetadata candidate) {
+        Set<String> baseTokens = normalizedTokenSet(base.parentContext + " " + base.sectionContext + " " + base.text);
+        Set<String> candidateTokens = normalizedTokenSet(candidate.parentContext + " " + candidate.sectionContext + " " + candidate.text);
+        if (baseTokens.isEmpty() || candidateTokens.isEmpty()) {
+            return 0.0;
+        }
+        Set<String> intersection = new LinkedHashSet<>(baseTokens);
+        intersection.retainAll(candidateTokens);
+        Set<String> union = new LinkedHashSet<>(baseTokens);
+        union.addAll(candidateTokens);
+        return union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
     }
 
     private double semanticTextScore(ElementSnapshot base, CandidateMetadata candidate,
@@ -233,8 +283,27 @@ final class CandidateScorer {
     }
 
     private static String[] normalizedTokens(String value) {
-        String normalized = value == null ? "" : value.trim().toLowerCase().replaceAll("[^a-z0-9]+", " ").trim();
+        String normalized = normalizeForContext(value);
         return normalized.isBlank() ? new String[0] : normalized.split("\\s+");
+    }
+
+    private static Set<String> normalizedTokenSet(String value) {
+        String[] tokens = normalizedTokens(value);
+        Set<String> result = new LinkedHashSet<>();
+        for (String token : tokens) {
+            if (!token.isBlank()) {
+                result.add(token);
+            }
+        }
+        return result;
+    }
+
+    private static String normalizeRegion(String value) {
+        return normalizeForContext(value).replace(' ', '-');
+    }
+
+    private static String normalizeForContext(String value) {
+        return value == null ? "" : value.trim().toLowerCase().replaceAll("[^a-z0-9]+", " ").trim();
     }
 
     private static String normalizeRole(String role, String kind) {
@@ -268,6 +337,7 @@ final class CandidateScorer {
                 + " idx=" + candidate.getOriginalIndex()
                 + " score=" + String.format("%.3f", candidate.getScore())
                 + " kind=" + candidate.getKind()
+                + " region=" + candidate.getPageRegion()
                 + " seq=" + candidate.getSequence()
                 + " sem=" + String.format("%.2f", candidate.getSemanticScore())
                 + " field=" + String.format("%.2f", candidate.getFieldSemanticScore())

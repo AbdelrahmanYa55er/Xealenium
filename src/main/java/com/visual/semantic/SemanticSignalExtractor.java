@@ -28,16 +28,17 @@ public class SemanticSignalExtractor {
         String sectionContext = firstNonBlank(ax.getSectionContext(), dom.getSectionContext());
         String parentContext = firstNonBlank(ax.getParentContext(), dom.getParentContext());
         String inputType = firstNonBlank(ax.getInputType(), dom.getInputType());
+        String pageRegion = firstNonBlank(ax.getPageRegion(), dom.getPageRegion());
         String source = mergeSource(
             sourceForField(ax.getAccessibleName(), ax.getSemanticRole(), ax.getAutocomplete(),
-                ax.getLabelText(), ax.getPlaceholder(), ax.getDescriptionText(), ax.getSectionContext(), ax.getParentContext(), ax.getInputType(),
-                accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, "ax"),
+                ax.getLabelText(), ax.getPlaceholder(), ax.getDescriptionText(), ax.getSectionContext(), ax.getParentContext(), ax.getInputType(), ax.getPageRegion(),
+                accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, pageRegion, "ax"),
             sourceForField(dom.getAccessibleName(), dom.getSemanticRole(), dom.getAutocomplete(),
-                dom.getLabelText(), dom.getPlaceholder(), dom.getDescriptionText(), dom.getSectionContext(), dom.getParentContext(), dom.getInputType(),
-                accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, "dom")
+                dom.getLabelText(), dom.getPlaceholder(), dom.getDescriptionText(), dom.getSectionContext(), dom.getParentContext(), dom.getInputType(), dom.getPageRegion(),
+                accessibleName, semanticRole, autocomplete, labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, pageRegion, "dom")
         );
         return new SemanticSignals(accessibleName, semanticRole, autocomplete,
-            labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, source);
+            labelText, placeholder, descriptionText, sectionContext, parentContext, inputType, pageRegion, source);
     }
 
     private static String preferRole(String axRole, String domRole) {
@@ -50,10 +51,10 @@ public class SemanticSignalExtractor {
 
     private static String sourceForField(String sourceAccessible, String sourceRole, String sourceAutocomplete,
                                          String sourceLabelText, String sourcePlaceholder, String sourceDescription,
-                                         String sourceSection, String sourceParentContext, String sourceInputType,
+                                         String sourceSection, String sourceParentContext, String sourceInputType, String sourcePageRegion,
                                          String finalAccessible, String finalRole, String finalAutocomplete,
                                          String finalLabelText, String finalPlaceholder, String finalDescription,
-                                         String finalSection, String finalParentContext, String finalInputType,
+                                         String finalSection, String finalParentContext, String finalInputType, String finalPageRegion,
                                          String sourceLabel) {
         if (canonical(sourceAccessible).equals(canonical(finalAccessible))
             || canonical(sourceRole).equals(canonical(finalRole))
@@ -63,7 +64,8 @@ public class SemanticSignalExtractor {
             || canonical(sourceDescription).equals(canonical(finalDescription))
             || canonical(sourceSection).equals(canonical(finalSection))
             || canonical(sourceParentContext).equals(canonical(finalParentContext))
-            || canonical(sourceInputType).equals(canonical(finalInputType))) {
+            || canonical(sourceInputType).equals(canonical(finalInputType))
+            || canonical(sourcePageRegion).equals(canonical(finalPageRegion))) {
             return sourceLabel;
         }
         return "";

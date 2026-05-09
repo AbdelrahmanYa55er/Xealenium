@@ -62,6 +62,7 @@ public class HealingReporter {
             if (reportEntry.accepted) {
                 sb.append("<p class='meta'><strong>Strategy:</strong> " + reportEntry.selectorStrategy
                     + " &nbsp; <strong>Kind:</strong> " + reportEntry.candidateKind
+                    + " &nbsp; <strong>Region:</strong> " + reportEntry.pageRegion
                     + " &nbsp; <strong>Accessible name:</strong> " + reportEntry.accessibleName + "</p>");
                 sb.append("<p class='components'>visual=" + format(reportEntry.visualScore)
                     + " position=" + format(reportEntry.positionScore)

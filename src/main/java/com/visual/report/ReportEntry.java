@@ -11,6 +11,7 @@ public class ReportEntry {
     public final String selectorStrategy;
     public final String candidateKind;
     public final String accessibleName;
+    public final String pageRegion;
     public final int candidateSequence;
     public final double visualScore;
     public final double positionScore;
@@ -24,13 +25,13 @@ public class ReportEntry {
     public final double embeddingScore;
 
     public ReportEntry(String originalLocator, String newLocator, double score, String heatmapFilename) {
-        this(originalLocator, newLocator, score, heatmapFilename, false, "", "", "", -1,
+        this(originalLocator, newLocator, score, heatmapFilename, false, "", "", "", "", -1,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     }
 
     public ReportEntry(String originalLocator, CandidateScore candidate, String heatmapFilename) {
         this(originalLocator, candidate.getSelector(), candidate.getScore(), heatmapFilename, true,
-            candidate.getStrategy(), candidate.getKind(), candidate.getAccessibleName(), candidate.getSequence(),
+            candidate.getStrategy(), candidate.getKind(), candidate.getAccessibleName(), candidate.getPageRegion(), candidate.getSequence(),
             candidate.getVis(), candidate.getPos(), candidate.getTxt(), candidate.getKindScore(),
             candidate.getSeqScore(), candidate.getRoleScore(), candidate.getAutocompleteScore(),
             candidate.getSemanticScore(), candidate.getFieldSemanticScore(), candidate.getEmbeddingScore());
@@ -38,7 +39,7 @@ public class ReportEntry {
 
     private ReportEntry(String originalLocator, String newLocator, double score, String heatmapFilename,
                         boolean accepted, String selectorStrategy, String candidateKind, String accessibleName,
-                        int candidateSequence, double visualScore, double positionScore, double textScore,
+                        String pageRegion, int candidateSequence, double visualScore, double positionScore, double textScore,
                         double kindScore, double sequenceScore, double roleScore, double autocompleteScore,
                         double semanticScore, double fieldScore, double embeddingScore) {
         this.originalLocator = originalLocator;
@@ -49,6 +50,7 @@ public class ReportEntry {
         this.selectorStrategy = selectorStrategy;
         this.candidateKind = candidateKind;
         this.accessibleName = accessibleName;
+        this.pageRegion = pageRegion;
         this.candidateSequence = candidateSequence;
         this.visualScore = visualScore;
         this.positionScore = positionScore;

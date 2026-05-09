@@ -30,6 +30,10 @@ public abstract class AutomationExercisePageSupport {
         return Path.of("pages", "AutomationExercise", "Updated", fileName).toUri().toString();
     }
 
+    public static String refusalUrl(String fileName) {
+        return Path.of("pages", "AutomationExercise", "Refusal", fileName).toUri().toString();
+    }
+
     protected WebElement find(By locator) {
         int reportsBefore = VisualHealingEngine.REPORTS.size();
         WebElement element = driver.findElement(locator);
