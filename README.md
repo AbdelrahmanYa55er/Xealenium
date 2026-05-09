@@ -369,6 +369,11 @@ test-outputs/xealenium/automation-exercise/
 
 That folder contains the scenario baseline, HTML report, optional JSON report, and heatmaps for the local E2E demo.
 
+For the AE competition healing task, it also contains:
+
+- `healing-accuracy-summary.md`
+  - an ordered target-check table comparing each old baseline locator with the expected healed business target, actual healed locator, strategy, score, and pass/fail result
+
 ## Benchmark Suites
 
 Main benchmark entry points:

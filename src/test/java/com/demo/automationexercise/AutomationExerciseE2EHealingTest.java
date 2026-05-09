@@ -7,7 +7,13 @@ import com.demo.automationexercise.pages.OrderPlacedPage;
 import com.demo.automationexercise.pages.PaymentPage;
 import com.demo.automationexercise.pages.ProductsPage;
 import com.demo.automationexercise.pages.SignupLoginPage;
+import com.visual.engine.VisualHealingEngine;
 import org.junit.jupiter.api.Test;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AutomationExerciseE2EHealingTest extends AutomationExerciseBaseTest {
     @Override
@@ -110,6 +116,16 @@ public class AutomationExerciseE2EHealingTest extends AutomationExerciseBaseTest
 
         generateReportNow();
         printHealingSummary();
+        writeAccuracySummary();
         assertHealingArtifactsGenerated();
+    }
+
+    private void writeAccuracySummary() {
+        Path summaryPath = Path.of(System.getProperty("ae.accuracy.report.path",
+            "test-outputs/xealenium/automation-exercise/healing-accuracy-summary.md"));
+        AutomationExerciseAccuracyReporter.AccuracySummary summary =
+            AutomationExerciseAccuracyReporter.write(summaryPath, VisualHealingEngine.REPORTS);
+        assertTrue(Files.exists(summaryPath), "AE healing accuracy summary should exist");
+        assertTrue(summary.perfect(), "AE healing accuracy should be 100%; see " + summaryPath);
     }
 }
