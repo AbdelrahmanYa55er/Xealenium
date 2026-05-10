@@ -1,0 +1,89 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
+    implementation 'org.seleniumhq.selenium:selenium-java:4.14.1'
+    implementation 'com.epam.healenium:healenium-web:3.4.5'
+    runtimeOnly 'org.slf4j:slf4j-simple:2.0.9'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.9'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.16.1'
+    implementation 'com.microsoft.onnxruntime:onnxruntime:1.20.0'
+    implementation 'ai.djl.huggingface:tokenizers:0.35.1'
+    implementation 'net.sf.extjwnl:extjwnl:2.0.5'
+    runtimeOnly 'net.sf.extjwnl:extjwnl-data-wn31:1.2'
+    testRuntimeOnly 'net.sf.extjwnl:extjwnl-data-wn31:1.2'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
+def istqbDemoOutputDir = 'test-outputs/xealenium/istqb-demo'
+def istqbDemoBaselinePath = "${istqbDemoOutputDir}/visual-baseline.json"
+def istqbDemoReportPath = "${istqbDemoOutputDir}/visual-healing-report.html"
+def istqbDemoJsonReportPath = "${istqbDemoOutputDir}/visual-healing-report.json"
+def istqbDemoHeatmapDir = "${istqbDemoOutputDir}/heatmaps"
+def istqbEmbeddingModelPath = file('models/gte-small-onnx/model.onnx').path
+
+def configureIstqbDemoTask = { task, taskName, phase, captureBaseline ->
+    task.group = 'xealenium'
+    task.description = taskName
+    task.testClassesDirs = sourceSets.test.output.classesDirs
+    task.classpath = sourceSets.test.runtimeClasspath
+    task.useJUnitPlatform()
+    task.filter {
+        includeTestsMatching 'com.demo.istqb.IstqbDemoFlowTest'
+    }
+    task.testLogging {
+        showStandardStreams = true
+        events 'passed', 'skipped', 'failed'
+    }
+    if (System.getProperty('headless') != null) {
+        task.systemProperty 'headless', System.getProperty('headless')
+    }
+    task.systemProperty 'report', System.getProperty('report', 'true')
+    task.systemProperty 'interactive', System.getProperty('interactive', captureBaseline ? 'false' : 'true')
+    task.systemProperty 'istqb.phase', phase
+    task.systemProperty 'istqb.live.url', System.getProperty('istqb.live.url', 'https://istqb.org/')
+    task.systemProperty 'visual.baseline.path', System.getProperty('visual.baseline.path', istqbDemoBaselinePath)
+    task.systemProperty 'visual.report.path', System.getProperty('visual.report.path', istqbDemoReportPath)
+    task.systemProperty 'visual.report.json.path', System.getProperty('visual.report.json.path', istqbDemoJsonReportPath)
+    task.systemProperty 'visual.heatmap.dir', System.getProperty('visual.heatmap.dir', istqbDemoHeatmapDir)
+    task.systemProperty 'visual.captureBaseline', String.valueOf(captureBaseline)
+    task.systemProperty 'visual.captureBaseline.refresh', String.valueOf(captureBaseline)
+    task.systemProperty 'visual.embedding.enabled', System.getProperty('visual.embedding.enabled', 'true')
+    task.systemProperty 'visual.embedding.modelName', System.getProperty('visual.embedding.modelName', 'gte-small')
+    task.systemProperty 'visual.embedding.modelPath', System.getProperty('visual.embedding.modelPath', istqbEmbeddingModelPath)
+    task.systemProperty 'visual.embedding.modelFile', System.getProperty('visual.embedding.modelFile', istqbEmbeddingModelPath)
+    task.outputs.upToDateWhen { false }
+}
+
+tasks.register('istqbDemoCaptureBaseline', Test) {
+    configureIstqbDemoTask(delegate,
+        'Capture ISTQB demo baseline snapshots from local Demo test pages.',
+        'capture',
+        true)
+    doFirst {
+        delete file(istqbDemoOutputDir)
+    }
+}
+
+tasks.register('istqbDemoRunLiveInteractive', Test) {
+    configureIstqbDemoTask(delegate,
+        'Run ISTQB demo flow against https://istqb.org/ in interactive Xealenium mode.',
+        'live',
+        false)
+    dependsOn tasks.named('istqbDemoCaptureBaseline')
+}

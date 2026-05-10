@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ISTQB Home</title>
+  <style>
+    :root {
+      --blue: #005a8b;
+      --cyan: #13a4d8;
+      --ink: #172335;
+      --muted: #596979;
+      --line: #dbe5ec;
+      --surface: #f6f9fb;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+      background: var(--white);
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .bar,
+    main,
+    footer {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 78px;
+    }
+
+    .brand {
+      color: var(--blue);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+
+    nav {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-weight: 700;
+    }
+
+    nav a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    nav a:hover,
+    nav a:focus-visible {
+      color: var(--cyan);
+    }
+
+    .hero {
+      display: grid;
+      gap: 22px;
+      padding: 72px 0 56px;
+      max-width: 760px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--blue);
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 22px;
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      color: var(--white);
+      background: var(--blue);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .button.secondary {
+      color: var(--blue);
+      background: var(--white);
+    }
+
+    .band {
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      padding: 34px 0;
+    }
+
+    .summary strong {
+      display: block;
+      color: var(--blue);
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    footer {
+      padding: 24px 0 36px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 700px) {
+      .bar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px 0;
+      }
+
+      .hero {
+        padding-top: 46px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <a class="brand" href="home.html" aria-label="ISTQB home">ISTQB</a>
+      <nav aria-label="Primary">
+        <a href="cert.html" id="certification-link">Certification</a>
+        <a href="findExamProvider.html">Exam Providers</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <h1 id="page-title">International Software Testing Qualifications Board</h1>
+      <p>ISTQB is a global certification scheme for software testing professionals, with learning paths for foundation, agile, specialist, advanced, and expert topics.</p>
+      <div class="actions">
+        <a class="button" href="cert.html">Certification</a>
+        <a class="button secondary" href="findExamProvider.html">Find exam provider</a>
+      </div>
+    </section>
+  </main>
+
+  <section class="band" aria-label="ISTQB facts">
+    <div class="summary">
+      <p><strong>1M+</strong>certifications issued worldwide</p>
+      <p><strong>130+</strong>countries represented</p>
+      <p><strong>Vendor-neutral</strong>testing knowledge and terminology</p>
+    </div>
+  </section>
+
+  <footer>
+    ISTQB demo fixture for local Xealenium navigation.
+  </footer>
+</body>
+</html>

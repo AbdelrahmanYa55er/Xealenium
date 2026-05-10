@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Find Exam Provider</title>
+  <style>
+    :root {
+      --blue: #005a8b;
+      --cyan: #13a4d8;
+      --ink: #172335;
+      --muted: #596979;
+      --line: #dbe5ec;
+      --surface: #f6f9fb;
+      --white: #ffffff;
+      --success: #1f7a4d;
+      --danger: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+      background: var(--white);
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .bar,
+    main,
+    footer {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 78px;
+    }
+
+    .brand {
+      color: var(--blue);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+
+    nav {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-weight: 700;
+    }
+
+    nav a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    nav a:hover,
+    nav a:focus-visible {
+      color: var(--cyan);
+    }
+
+    .intro {
+      padding: 54px 0 26px;
+      max-width: 780px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      color: var(--blue);
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: 44px auto;
+      gap: 16px;
+      align-items: end;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    label[for="providerSearch"] {
+      grid-column: 1 / span 2;
+      grid-row: 2;
+    }
+
+    #searchButton {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    select,
+    input,
+    button {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0 12px;
+      color: var(--ink);
+      background: var(--white);
+      font: inherit;
+    }
+
+    button {
+      border-color: var(--blue);
+      color: var(--white);
+      background: var(--blue);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:hover,
+    button:focus-visible {
+      border-color: var(--cyan);
+      background: var(--cyan);
+    }
+
+    .status {
+      margin: 18px 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      padding: 0 0 54px;
+    }
+
+    .provider {
+      display: grid;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      background: var(--white);
+    }
+
+    .provider h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .meta {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: var(--blue);
+      background: #e7f5fb;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .badge.preferred {
+      color: var(--success);
+      background: #e9f7ef;
+    }
+
+    .provider a {
+      color: var(--blue);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .provider a:hover,
+    .provider a:focus-visible {
+      color: var(--cyan);
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 24px 0 36px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 860px) {
+      .bar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px 0;
+      }
+
+      .filters,
+      .results {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <a class="brand" href="home.html" aria-label="ISTQB home">ISTQB</a>
+      <nav aria-label="Primary">
+        <a href="home.html">Home</a>
+        <a href="cert.html">Certification</a>
+        <a href="findExamProvider.html" aria-current="page">Exam Providers</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">Find an Exam Provider</h1>
+      <p>Select a country or exam to fetch provider data from the ISTQB API and show matching exam providers.</p>
+    </section>
+
+    <section class="filters" aria-label="Exam provider filters">
+      <label for="countrySelect" aria-hidden="true">
+        Country / Region
+        <select id="countrySelect" tabindex="-1">
+          <option value="">All countries</option>
+        </select>
+      </label>
+
+      <label for="examSelect" aria-hidden="true">
+        Exam
+        <select id="examSelect" tabindex="-1">
+          <option value="">All exams</option>
+        </select>
+      </label>
+
+      <label for="providerSearch">
+        Exam Provider
+        <input id="providerSearch" type="search" placeholder="Search for exam provider..." aria-label="Search for exam provider...">
+      </label>
+
+      <button id="searchButton" type="button">Search</button>
+    </section>
+
+    <p class="status" id="status" role="status">Loading providers...</p>
+    <section class="results" id="results" aria-live="polite"></section>
+  </main>
+
+  <footer>
+    Data source: https://istqb.org/wp-json/istqb/v1/exam-providers
+  </footer>
+
+  <script>
+    const API_URL = "https://istqb.org/wp-json/istqb/v1/exam-providers";
+
+    const state = {
+      providers: [],
+      countries: [],
+      exams: [],
+      lastLoadedAt: null
+    };
+
+    const countrySelect = document.querySelector("#countrySelect");
+    const examSelect = document.querySelector("#examSelect");
+    const providerSearch = document.querySelector("#providerSearch");
+    const searchButton = document.querySelector("#searchButton");
+    const statusEl = document.querySelector("#status");
+    const resultsEl = document.querySelector("#results");
+
+    function text(value) {
+      return value === null || value === undefined ? "" : String(value);
+    }
+
+    function normalize(value) {
+      return text(value).trim().toLowerCase();
+    }
+
+    function escapeHtml(value) {
+      return text(value).replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[character]));
+    }
+
+    function safeWebsite(value) {
+      const website = text(value).trim();
+
+      if (!website) {
+        return "";
+      }
+
+      try {
+        const url = new URL(website.startsWith("http") ? website : `https://${website}`);
+        return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+      } catch {
+        return "";
+      }
+    }
+
+    function uniqueSorted(values) {
+      return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    }
+
+    function providerExams(provider) {
+      const groups = provider.exams || {};
+      return Object.values(groups)
+        .flatMap((group) => Array.isArray(group) ? group : [])
+        .filter(Boolean);
+    }
+
+    function providerHasCountry(provider, country) {
+      if (!country) {
+        return true;
+      }
+
+      const target = normalize(country);
+      const countryFields = [
+        provider.country,
+        provider.countriesOfOperation,
+        ...(Array.isArray(provider.boards) ? provider.boards.map((board) => board.countriesOfOperation) : [])
+      ];
+
+      return countryFields.some((field) => normalize(field).includes(target));
+    }
+
+    function providerHasExam(provider, acronym) {
+      if (!acronym) {
+        return true;
+      }
+
+      const target = normalize(acronym);
+      return providerExams(provider).some((exam) => normalize(exam.shortAcronym).includes(target));
+    }
+
+    function providerMatchesSearch(provider, query) {
+      if (!query) {
+        return true;
+      }
+
+      const target = normalize(query);
+      return normalize(provider.name).includes(target);
+    }
+
+    function providerExamBadges(provider) {
+      return uniqueSorted(providerExams(provider).map((exam) => exam.shortAcronym)).slice(0, 10);
+    }
+
+    function populateSelect(select, options, placeholder, defaultValue = "") {
+      select.innerHTML = "";
+      select.append(new Option(placeholder, ""));
+      options.forEach((option) => select.append(new Option(option, option)));
+      select.value = options.includes(defaultValue) ? defaultValue : "";
+    }
+
+    function renderProviders() {
+      const country = countrySelect.value;
+      const exam = examSelect.value;
+      const query = providerSearch.value;
+
+      const filtered = state.providers.filter((provider) => (
+        providerHasCountry(provider, country) &&
+        providerHasExam(provider, exam) &&
+        providerMatchesSearch(provider, query)
+      ));
+
+      statusEl.classList.remove("error");
+      statusEl.textContent = `${filtered.length} provider${filtered.length === 1 ? "" : "s"} found`;
+      resultsEl.innerHTML = "";
+
+      if (!filtered.length) {
+        resultsEl.innerHTML = '<article class="provider"><h2>No providers found</h2><p>Try another country, exam, or provider name.</p></article>';
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      filtered.forEach((provider) => {
+        const article = document.createElement("article");
+        article.className = "provider";
+
+        const website = safeWebsite(provider.website);
+        const badges = providerExamBadges(provider)
+          .map((badge) => `<span class="badge">${escapeHtml(badge)}</span>`)
+          .join("");
+        const preferred = provider.preferred ? '<span class="badge preferred">Preferred</span>' : "";
+        const publicBadge = provider.public ? '<span class="badge">Public</span>' : "";
+
+        article.innerHTML = `
+          <div>
+            <h2>${escapeHtml(provider.name) || "Unnamed provider"}</h2>
+            <div class="badges">${preferred}${publicBadge}${badges}</div>
+          </div>
+          <div class="meta">
+            <span><strong>Country:</strong> ${escapeHtml(provider.country) || "Not listed"}</span>
+            <span><strong>City:</strong> ${escapeHtml(provider.city) || "Not listed"}</span>
+            <span><strong>Board:</strong> ${escapeHtml(provider.examProviderBorderName) || "Not listed"}</span>
+            <span><strong>Email:</strong> ${escapeHtml(provider.email) || "Not listed"}</span>
+            <span><strong>Phone:</strong> ${escapeHtml(provider.phone) || "Not listed"}</span>
+          </div>
+          ${website ? `<a href="${escapeHtml(website)}" target="_blank" rel="noopener">Visit website</a>` : ""}
+        `;
+
+        fragment.append(article);
+      });
+
+      resultsEl.append(fragment);
+    }
+
+    async function loadProviders() {
+      statusEl.classList.remove("error");
+      statusEl.textContent = "Loading providers...";
+
+      try {
+        const response = await fetch(API_URL, { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const providers = Array.isArray(data) ? data : data.providers || [];
+        const countries = Array.isArray(data.countries)
+          ? data.countries
+          : uniqueSorted(providers.flatMap((provider) => [provider.country, provider.countriesOfOperation]));
+        const exams = Array.isArray(data.exams)
+          ? data.exams
+          : uniqueSorted(providers.flatMap((provider) => providerExams(provider)));
+
+        state.providers = providers;
+        state.countries = uniqueSorted(countries.map((country) => text(country)));
+        state.exams = uniqueSorted(exams.map((exam) => text(exam.shortAcronym || exam.name || exam)));
+        state.lastLoadedAt = new Date();
+
+        populateSelect(countrySelect, state.countries, "All countries");
+        populateSelect(examSelect, state.exams, "All exams", "CTFL");
+        renderProviders();
+      } catch (error) {
+        statusEl.classList.add("error");
+        statusEl.textContent = `Could not load provider data: ${error.message}`;
+        resultsEl.innerHTML = "";
+      }
+    }
+
+    countrySelect.addEventListener("change", renderProviders);
+    examSelect.addEventListener("change", renderProviders);
+    searchButton.addEventListener("click", renderProviders);
+    providerSearch.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        renderProviders();
+      }
+    });
+
+    loadProviders();
+  </script>
+</body>
+</html>

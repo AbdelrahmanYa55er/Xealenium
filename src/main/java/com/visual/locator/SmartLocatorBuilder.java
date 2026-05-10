@@ -348,6 +348,18 @@ public class SmartLocatorBuilder {
                 "[aria-labelledby='" + cssLiteral(ariaLabelledBy) + "']",
                 "aria-labelledby", 3, "aria-labelledby", SmartLocatorResult.RiskLevel.LOW, logs);
         }
+
+        if (isFormTextEntry(extracted) && isStableValue(extracted.placeholder)) {
+            String tag = actualTag(extracted);
+            addCandidate(candidates, seen, "css",
+                tag + "[placeholder='" + cssLiteral(extracted.placeholder) + "']",
+                "placeholder", 3, "placeholder", SmartLocatorResult.RiskLevel.LOW, logs);
+            if ("input".equals(tag) && isStableValue(extracted.type)) {
+                addCandidate(candidates, seen, "css",
+                    "input[type='" + cssLiteral(extracted.type) + "'][placeholder='" + cssLiteral(extracted.placeholder) + "']",
+                    "type-placeholder", 3, "input type + placeholder", SmartLocatorResult.RiskLevel.LOW, logs);
+            }
+        }
     }
 
     private void addNameCandidates(List<Candidate> candidates, Set<String> seen,
@@ -691,6 +703,18 @@ public class SmartLocatorBuilder {
             return true;
         }
         return Set.of("input", "textarea", "select").contains(extracted.tagName);
+    }
+
+    private static boolean isFormTextEntry(ExtractedElementMetadata extracted) {
+        String tag = actualTag(extracted);
+        if ("textarea".equals(tag)) {
+            return true;
+        }
+        if (!"input".equals(tag)) {
+            return false;
+        }
+        String type = normalizeSpace(extracted.type).toLowerCase(Locale.ROOT);
+        return type.isBlank() || Set.of("text", "search", "email", "tel", "url", "password", "number").contains(type);
     }
 
     private static boolean shouldUseStableClassCssCandidate(ExtractedElementMetadata extracted) {

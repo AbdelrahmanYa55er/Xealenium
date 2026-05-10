@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ISTQB Certifications</title>
+  <style>
+    :root {
+      --blue: #005a8b;
+      --cyan: #13a4d8;
+      --ink: #172335;
+      --muted: #596979;
+      --line: #dbe5ec;
+      --surface: #f6f9fb;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+      background: var(--white);
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .bar,
+    main,
+    footer {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 78px;
+    }
+
+    .brand {
+      color: var(--blue);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+
+    nav {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-weight: 700;
+    }
+
+    nav a,
+    .read-more {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    nav a:hover,
+    nav a:focus-visible,
+    .read-more:hover,
+    .read-more:focus-visible {
+      color: var(--cyan);
+    }
+
+    .intro {
+      padding: 54px 0 28px;
+      max-width: 760px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      color: var(--blue);
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .certifications {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      padding: 18px 0 54px;
+    }
+
+    article {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 22px;
+      background: var(--white);
+    }
+
+    h2,
+    h3 {
+      margin: 0 0 10px;
+      color: var(--ink);
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .read-more {
+      display: inline-flex;
+      margin-top: 16px;
+      font-weight: 800;
+    }
+
+    .highlight {
+      border-color: var(--cyan);
+      background: var(--surface);
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 24px 0 36px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 760px) {
+      .bar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px 0;
+      }
+
+      .certifications {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <a class="brand" href="home.html" aria-label="ISTQB home">ISTQB</a>
+      <nav aria-label="Primary">
+        <a href="home.html">Home</a>
+        <a href="cert.html" aria-current="page">Certification</a>
+        <a href="findExamProvider.html">Exam Providers</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">Our Certifications</h1>
+      <p>Explore ISTQB certification paths and select the certification that best supports your software testing career.</p>
+    </section>
+
+    <section class="certifications" aria-label="Certification list">
+      <article class="highlight" id="ctfl">
+        <h2>Certified Tester Foundation Level (CTFL) v4.0</h2>
+        <p>Foundation knowledge for software testing terminology, techniques, and professional practice.</p>
+        <a class="read-more" href="genai.html">Read more &gt;</a>
+      </article>
+
+      <article>
+        <h2>Certified Tester AI Testing (CT-AI)</h2>
+        <p>Testing skills for AI-based systems and AI-supported testing activities.</p>
+        <a class="read-more" href="#">Read more &gt;</a>
+      </article>
+
+      <article id="ct-genai">
+        <h3>Certified Tester Testing with Generative AI (CT-GenAI)</h3>
+        <p>The ISTQB Certified Tester Specialist Level - Testing with Generative AI extends foundation testing knowledge with GenAI testing and engineering practices.</p>
+        <a class="read-more" href="#">Read more &gt;</a>
+      </article>
+
+      <article>
+        <h2>Certified Tester Mobile Application Testing (CT-MAT)</h2>
+        <p>Testing approaches, activities, and risks for mobile application projects.</p>
+        <a class="read-more" href="#">Read more &gt;</a>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    ISTQB demo fixture for local Xealenium navigation.
+  </footer>
+</body>
+</html>

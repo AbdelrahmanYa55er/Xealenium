@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Certified Tester Foundation Level</title>
+  <style>
+    :root {
+      --blue: #005a8b;
+      --cyan: #13a4d8;
+      --ink: #172335;
+      --muted: #596979;
+      --line: #dbe5ec;
+      --surface: #f6f9fb;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+      background: var(--white);
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .bar,
+    main,
+    footer {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 78px;
+    }
+
+    .brand {
+      color: var(--blue);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+
+    nav {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-weight: 700;
+    }
+
+    nav a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    nav a:hover,
+    nav a:focus-visible {
+      color: var(--cyan);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+      gap: 42px;
+      align-items: center;
+      padding: 58px 0;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      color: var(--blue);
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 22px;
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      color: var(--white);
+      background: var(--blue);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .button:hover,
+    .button:focus-visible {
+      border-color: var(--cyan);
+      background: var(--cyan);
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 24px;
+      background: var(--surface);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      color: var(--ink);
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 24px 0 36px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 820px) {
+      .bar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px 0;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 42px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <a class="brand" href="home.html" aria-label="ISTQB home">ISTQB</a>
+      <nav aria-label="Primary">
+        <a href="home.html">Home</a>
+        <a href="cert.html">Certification</a>
+        <a href="findExamProvider.html">Exam Providers</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">Certified Tester Foundation Level (CTFL) v4.0</h1>
+        <p>This certification covers the essential testing knowledge, terminology, and techniques used across modern software delivery approaches.</p>
+        <p>Use an ISTQB exam provider to schedule the certification exam when you are ready.</p>
+        <a class="button" href="findExamProvider.html">Find exam provider</a>
+      </div>
+
+      <aside class="panel" aria-label="Certification overview">
+        <h2>Certification focus</h2>
+        <ul>
+          <li>Testing fundamentals</li>
+          <li>Static and dynamic testing</li>
+          <li>Test analysis and design</li>
+          <li>Defect management basics</li>
+        </ul>
+      </aside>
+    </section>
+  </main>
+
+  <footer>
+    ISTQB demo fixture for local Xealenium navigation.
+  </footer>
+</body>
+</html>

@@ -319,7 +319,7 @@ public final class BrowserSemanticScripts {
             var sib = el, nth = 1;
             while ((sib = sib.previousElementSibling)) { if (sib.nodeName.toLowerCase() === selector) nth++; }
             if (nth !== 1) selector += ':nth-of-type(' + nth + ')';
-            var className = (el.className || '').trim();
+            var className = trim(el.className);
             if (className) selector += '.' + className.split(/\\s+/).join('.');
             path.unshift(selector);
             el = el.parentElement;
