@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xealenium: Visual + Semantic Self-Healing</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true">
+    <div class="grid-layer"></div>
+    <div class="scanline"></div>
+  </div>
+
+  <header class="deck-chrome">
+    <div class="chrome-brand">
+      <span class="brand-glyph">Xe</span>
+      <span>Xealenium</span>
+    </div>
+    <div class="chrome-progress" aria-hidden="true">
+      <span id="progressFill"></span>
+    </div>
+    <div class="chrome-count" id="slideCounter">01 / 23</div>
+  </header>
+
+  <main class="deck" id="deck" aria-live="polite">
+    <section class="slide title-slide is-active" data-title="Title">
+      <div class="xe-logo-stage hero-layered-only" aria-label="Layered X logo representing the three-tier recovery stack">
+        <div class="big-layered-x" aria-hidden="true">
+          <span class="big-x big-x-one">X</span>
+          <span class="big-x big-x-two">X</span>
+          <span class="big-x big-x-three">X</span>
+        </div>
+      </div>
+      <div class="title-copy">
+        <p class="eyebrow">Visual + Semantic Self-Healing</p>
+        <h1>Xealenium</h1>
+        <p class="subtitle">Visual + Semantic Self-Healing for Test Automation</p>
+        <div class="title-metrics">
+          <span>Local-first recovery</span>
+          <span>Explainable scoring</span>
+          <span>Smart locators</span>
+          <span>No external AI API</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide meet-joe-slide" data-title="Meet Joe">
+      <div class="slide-copy narrow">
+        <p class="eyebrow">Meet Joe</p>
+        <h2>The overnight build is red.</h2>
+        <p>Joe opens the CI dashboard at 02:17 AM.<br>The product still looks fine.<br>But the UI automation suite is failing everywhere.</p>
+        <p class="joe-question">So what actually broke?</p>
+      </div>
+      <div class="joe-dashboard">
+        <div class="engineer-card">
+          <div class="avatar">
+            <span></span>
+          </div>
+          <div>
+            <strong>Joe</strong>
+            <small>Test Automation Engineer</small>
+            <em>On-call UI Regression</em>
+          </div>
+        </div>
+        <div class="ci-panel">
+          <div class="panel-top">
+            <span>CI Pipeline</span>
+            <strong>02:17 AM</strong>
+          </div>
+          <div class="ci-status red">
+            <span>47</span>
+            <p>failed UI tests</p>
+          </div>
+          <div class="test-list">
+            <div class="failed-spec"><span class="dot red-dot"></span><strong>profile_update.ui.spec</strong><i>—</i><b>failed</b></div>
+            <div class="failed-spec"><span class="dot red-dot"></span><strong>registration.ui.spec</strong><i>—</i><b>failed</b></div>
+            <div class="failed-spec"><span class="dot red-dot"></span><strong>checkout_forms.ui.spec</strong><i>—</i><b>failed</b></div>
+            <div class="passed-spec"><span class="dot green-dot"></span><strong>api_contracts.spec</strong><i>—</i><b>passed</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Same UI">
+      <div class="slide-copy">
+        <p class="eyebrow">Same UI, Broken Contract</p>
+        <h2>The product did not break. The automation contract did.</h2>
+      </div>
+      <div class="contract-grid">
+        <div class="app-surface">
+          <div class="mini-toolbar">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="form-card">
+            <label>Email address</label>
+            <div class="input-glow">joe@company.dev</div>
+            <label>Company</label>
+            <div class="input-glow muted">Acme Systems</div>
+            <button>Save profile</button>
+          </div>
+        </div>
+        <div class="dom-compare">
+          <div class="dom-box expected">
+            <strong>Expected DOM</strong>
+            <code>&lt;input id="email" name="email"&gt;</code>
+            <code>&lt;label for="email"&gt;Email&lt;/label&gt;</code>
+          </div>
+          <div class="diff-stem"></div>
+          <div class="dom-box drifted">
+            <strong>Drifted DOM</strong>
+            <code>&lt;div contenteditable role="textbox"&gt;</code>
+            <code>&lt;span data-field="contact.email"&gt;</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide native-failure-slide" data-title="Native Selenium">
+      <div class="native-failure-header">
+        <p class="eyebrow">Why Native Selenium Fails</p>
+        <h2>Most locators assume the DOM is a stable contract.</h2>
+        <p>But Selenium does not recover intent — it only executes the locator you gave it.</p>
+      </div>
+      <div class="native-failure-layout">
+        <div class="contract-column assumption-column">
+          <h3>Locator assumption</h3>
+          <div class="contract-item stable">id="email" stays stable</div>
+          <div class="contract-item stable">input tag stays the same</div>
+          <div class="contract-item stable">parent wrapper stays the same</div>
+          <div class="contract-item stable">field order stays the same</div>
+          <div class="contract-item stable">CSS class stays meaningful</div>
+        </div>
+
+        <div class="failure-card">
+          <code>driver.findElement(By.id("email"))</code>
+          <span>→</span>
+          <strong>NoSuchElementException</strong>
+        </div>
+
+        <div class="contract-column reality-column">
+          <h3>Runtime reality</h3>
+          <div class="contract-item drift">dynamic IDs</div>
+          <div class="contract-item drift">contenteditable widgets</div>
+          <div class="contract-item drift">changed wrappers</div>
+          <div class="contract-item drift">moved fields</div>
+          <div class="contract-item drift">generated CSS</div>
+        </div>
+      </div>
+      <p class="native-bottom-line">When the contract changes, native lookup has no fallback.</p>
+    </section>
+
+    <section class="slide" data-title="Existing Tools">
+      <div class="slide-copy narrow">
+        <p class="eyebrow">Existing Self-Healing Tools</p>
+        <h2>Joe finds selector healing.</h2>
+        <p>Tools like Healenium help when the new DOM still resembles the old locator contract.</p>
+        <p class="bounded-note">Useful — but bounded.</p>
+      </div>
+      <div class="search-layout">
+        <div class="search-box">
+          <span>Search</span>
+          <strong>selenium self healing locators</strong>
+        </div>
+        <div class="selector-boundary">
+          <div class="boundary-label">Selector Recovery Boundary</div>
+          <div class="tool-cards">
+            <article>
+              <b>Healenium</b>
+              <p>Selector-level recovery</p>
+            </article>
+            <article>
+              <b>DOM similarity</b>
+              <p>Compares nearby structure</p>
+            </article>
+            <article>
+              <b>Attribute matching</b>
+              <p>Uses names, IDs, classes, text</p>
+            </article>
+          </div>
+          <div class="limit-tag">Limited when structure diverges</div>
+        </div>
+        <p class="search-transition">But Joe's failure is more than a selector change.</p>
+      </div>
+    </section>
+
+    <section class="slide gap-slide" data-title="The Gap">
+      <div class="slide-copy">
+        <p class="eyebrow">The Gap</p>
+        <h2>Selector healing helps when the DOM is still recognizable.</h2>
+        <p>But when drift is severe,<br>the selector stops describing the element.</p>
+      </div>
+      <div class="gap-visual">
+        <div class="selector-boundary-map" aria-hidden="true">
+          <div class="boundary-side useful-side">
+            <span>Selector healing works</span>
+            <strong>recognizable DOM</strong>
+          </div>
+          <div class="boundary-line">
+            <b>Selector Healing Boundary</b>
+          </div>
+          <div class="boundary-side drift-side">
+            <span>Severe DOM drift</span>
+            <strong>intent required</strong>
+          </div>
+        </div>
+
+        <div class="gap-board">
+          <div class="gap-card">
+            <span>01</span>
+            <strong>Tag changed</strong>
+            <code>&lt;input id="email"&gt;<br>→ &lt;div role="textbox"&gt;</code>
+          </div>
+          <div class="gap-card">
+            <span>02</span>
+            <strong>Structure rewritten</strong>
+            <code>/form/div/input<br>→ component wrapper tree</code>
+          </div>
+          <div class="gap-card">
+            <span>03</span>
+            <strong>Too many candidates</strong>
+            <code>multiple buttons, fields,<br>and similar labels</code>
+          </div>
+          <div class="gap-card">
+            <span>04</span>
+            <strong>Selector loses intent</strong>
+            <code>By.id("submit")<br>no longer explains "submit"</code>
+          </div>
+        </div>
+        <p class="gap-transition">So Joe asks: how would a human tester recognize the same element?</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Human Tester">
+      <div class="slide-copy center">
+        <p class="eyebrow">Human Recovery</p>
+        <h2>How would a human tester solve it?</h2>
+        <p>A human recognizes the element by label, position, shape, role, and meaning.</p>
+      </div>
+      <div class="human-scan">
+        <div class="browser-frame">
+          <div class="form-card compact">
+            <label>Work email</label>
+            <div class="input-glow highlighted">joe@company.dev</div>
+            <label>Password</label>
+            <div class="input-glow muted">••••••••</div>
+          </div>
+          <div class="scan-reticle"></div>
+        </div>
+        <div class="signal-stack">
+          <span>Label</span>
+          <span>Position</span>
+          <span>Shape</span>
+          <span>Role</span>
+          <span>Meaning</span>
+        </div>
+      </div>
+      <p class="big-question">Can automation recover like a human tester?</p>
+    </section>
+
+    <section class="slide" data-title="Introducing Xealenium">
+      <div class="intro-layout">
+        <div class="product-badge">
+          <span class="brand-glyph large">Xe</span>
+          <h2>Introducing Xealenium</h2>
+        </div>
+        <div class="intro-copy">
+          <p>Xealenium adds a third fallback layer after Selenium and Healenium: visual + semantic recovery.</p>
+          <div class="tagline">Local, configurable, secure, and explainable recovery for UI tests.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="3-Tier Stack">
+      <div class="slide-copy center">
+        <p class="eyebrow">The 3-Tier Recovery Stack</p>
+        <h2>Escalate only when needed.</h2>
+      </div>
+      <div class="tier-stack">
+        <div class="tier native-tier">
+          <span>Tier 1</span>
+          <strong>Native Selenium lookup</strong>
+          <small>Fast path</small>
+        </div>
+        <div class="tier heal-tier">
+          <span>Tier 2</span>
+          <strong>Healenium selector recovery</strong>
+          <small>DOM similarity</small>
+        </div>
+        <div class="tier xe-tier">
+          <span>Tier 3</span>
+          <strong>Xealenium visual + semantic recovery</strong>
+          <small>Intent recovery</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Healing Journey">
+      <div class="slide-copy">
+        <p class="eyebrow">The Visual Healing Journey</p>
+        <h2>A controlled pipeline from failure to explainable recovery.</h2>
+      </div>
+      <div class="pipeline">
+        <div>Failed findElement()</div>
+        <div>Baseline lookup</div>
+        <div>Candidate collection</div>
+        <div>Semantic enrichment</div>
+        <div>Visual / semantic scoring</div>
+        <div>Decision engine</div>
+        <div>Smart locator generation</div>
+        <div>Report artifacts</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Baseline">
+      <div class="slide-copy narrow">
+        <p class="eyebrow">Capturing the Page-Scoped Baseline</p>
+        <h2>Xealenium learns what each element means on the page.</h2>
+      </div>
+      <div class="baseline-map">
+        <div class="element-snapshot">
+          <div class="snapshot-box"></div>
+          <strong>Email field</strong>
+          <small>profile.page / contact.email</small>
+        </div>
+        <div class="metadata-cloud">
+          <span>visual metadata</span>
+          <span>coordinates</span>
+          <span>DOM metadata</span>
+          <span>accessibility metadata</span>
+          <span>semantic fingerprint</span>
+          <span>optional embedding vector</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Candidates">
+      <div class="slide-copy">
+        <p class="eyebrow">Candidate Collection</p>
+        <h2>When the locator fails, scan the live page for possible matches.</h2>
+      </div>
+      <div class="candidate-scene">
+        <div class="live-page">
+          <div class="candidate weak"></div>
+          <div class="candidate strong"></div>
+          <div class="candidate medium"></div>
+          <div class="candidate weak bottom"></div>
+        </div>
+        <div class="candidate-list">
+          <div><span class="rank">01</span><strong>role=textbox, label=Work email</strong><b>0.94</b></div>
+          <div><span class="rank">02</span><strong>placeholder=Email</strong><b>0.71</b></div>
+          <div><span class="rank">03</span><strong>name=company</strong><b>0.42</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Semantic Engine">
+      <div class="slide-copy center">
+        <p class="eyebrow">Semantic Context Engine</p>
+        <h2>Meaning comes from more than a selector.</h2>
+      </div>
+      <div class="semantic-hub">
+        <div class="hub-core">Element Intent</div>
+        <span class="hub-node n1">accessible name</span>
+        <span class="hub-node n2">role</span>
+        <span class="hub-node n3">input type</span>
+        <span class="hub-node n4">label text</span>
+        <span class="hub-node n5">placeholder</span>
+        <span class="hub-node n6">visible description</span>
+        <span class="hub-node n7">section context</span>
+        <span class="hub-node n8">parent context</span>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Local Embeddings">
+      <div class="slide-copy narrow">
+        <p class="eyebrow">Local AI Embeddings</p>
+        <h2>Optional ONNX model. No external AI API calls.</h2>
+        <p>If the model is absent, Xealenium falls back to deterministic scoring.</p>
+      </div>
+      <div class="local-ai">
+        <div class="machine-box">
+          <div class="chip-grid">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <strong>local-embedding.onnx</strong>
+        </div>
+        <div class="privacy-lines">
+          <div><b>Semantic vector</b><span>computed locally</span></div>
+          <div><b>Network</b><span>none required</span></div>
+          <div><b>Fallback</b><span>deterministic score</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Scoring">
+      <div class="slide-copy">
+        <p class="eyebrow">Scoring and Decision Engine</p>
+        <h2>Accept high-confidence matches. Refuse risky matches.</h2>
+      </div>
+      <div class="score-engine">
+        <div class="score-radar">
+          <span class="axis visual">Visual</span>
+          <span class="axis semantic">Semantic</span>
+          <span class="axis structural">Structural</span>
+          <span class="axis positional">Positional</span>
+          <span class="axis field">Field type</span>
+          <div class="radar-shape"></div>
+        </div>
+        <div class="decision-panel">
+          <div class="decision accept">
+            <strong>0.93</strong>
+            <span>heal</span>
+          </div>
+          <div class="decision refuse">
+            <strong>0.58</strong>
+            <span>refuse</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Human Review">
+      <div class="slide-copy narrow">
+        <p class="eyebrow">Human-in-the-Loop Review</p>
+        <h2>Interactive mode turns uncertain recovery into a reviewable decision.</h2>
+      </div>
+      <div class="review-ui">
+        <div class="review-left">
+          <div class="review-row"><span>failed locator</span><code>#email</code></div>
+          <div class="review-row"><span>candidate</span><code>[role="textbox"]</code></div>
+          <div class="review-row"><span>score</span><strong>0.91</strong></div>
+          <div class="review-actions">
+            <button>Approve</button>
+            <button class="ghost">Reject</button>
+          </div>
+        </div>
+        <div class="heatmap-widget">
+          <div class="heat-hot"></div>
+          <div class="heat-warm"></div>
+          <div class="heat-cool"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Smart Locator">
+      <div class="slide-copy">
+        <p class="eyebrow">Smart Locator Builder</p>
+        <h2>After healing, generate a more stable locator.</h2>
+      </div>
+      <div class="locator-builder">
+        <div class="locator-priority">
+          <span>data-testid</span>
+          <span>aria-label</span>
+          <span>name</span>
+          <span>semantic CSS</span>
+          <span>contextual XPath</span>
+        </div>
+        <div class="locator-code">
+          <code>By.cssSelector("[data-testid='profile-email']")</code>
+          <code>By.cssSelector("form[aria-label='Profile'] [name='email']")</code>
+          <code class="avoid">Avoid: /html/body/div[2]/div[4]/input</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Reports">
+      <div class="slide-copy narrow">
+        <p class="eyebrow">Reports and Heatmaps</p>
+        <h2>Recovery should leave evidence behind.</h2>
+      </div>
+      <div class="artifact-wall">
+        <div class="file-card json">
+          <strong>visual-baseline.json</strong>
+          <small>element metadata + fingerprints</small>
+        </div>
+        <div class="file-card heat">
+          <strong>visual-heatmap.png</strong>
+          <small>ranked candidate evidence</small>
+        </div>
+        <div class="file-card html">
+          <strong>visual-healing-report.html</strong>
+          <small>confidence, ranking, decision</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Demo Flow">
+      <div class="slide-copy">
+        <p class="eyebrow">Demo Flow</p>
+        <h2>From stable page to healed locator.</h2>
+      </div>
+      <div class="demo-steps">
+        <div><span>1</span>Capture baseline</div>
+        <div><span>2</span>Modify DOM</div>
+        <div><span>3</span>Selenium fails</div>
+        <div><span>4</span>Healenium tries</div>
+        <div><span>5</span>Xealenium recovers</div>
+        <div><span>6</span>Report generated</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Features">
+      <div class="slide-copy center">
+        <p class="eyebrow">Key Features</p>
+        <h2>Built like a test framework, not a magic trick.</h2>
+      </div>
+      <div class="feature-grid">
+        <span>3-tier recovery</span>
+        <span>visual healing</span>
+        <span>semantic matching</span>
+        <span>local embeddings</span>
+        <span>configurable thresholds</span>
+        <span>interactive review</span>
+        <span>smart locator generation</span>
+        <span>heatmaps + HTML reports</span>
+        <span>safe refusal behavior</span>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Limitations">
+      <div class="slide-copy narrow">
+        <p class="eyebrow">Limitations</p>
+        <h2>Strong recovery still needs honest boundaries.</h2>
+      </div>
+      <div class="limitation-list">
+        <div><b>Best fit</b><span>forms, registration, profile pages</span></div>
+        <div><b>Cost</b><span>heavy visual recovery has performance overhead</span></div>
+        <div><b>Tuning</b><span>scoring weights need benchmark feedback</span></div>
+        <div><b>Coverage</b><span>complex dynamic UIs need more data</span></div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Future Work">
+      <div class="slide-copy">
+        <p class="eyebrow">Future Work</p>
+        <h2>Make recovery broader, faster, and easier to operate.</h2>
+      </div>
+      <div class="roadmap">
+        <div><span>Benchmark matrix</span></div>
+        <div><span>Improved candidate scoring</span></div>
+        <div><span>Better report UI</span></div>
+        <div><span>More page types</span></div>
+        <div><span>Stronger semantic models</span></div>
+        <div><span>CI dashboard integration</span></div>
+      </div>
+    </section>
+
+    <section class="slide closing-slide" data-title="Closing">
+      <div class="closing-system">
+        <div class="closing-node">Intent</div>
+      </div>
+      <div class="slide-copy center">
+        <p class="eyebrow">Closing</p>
+        <h2>Xealenium extends self-healing from selector recovery to visual and semantic recovery.</h2>
+        <p class="final-line">From broken locators to recoverable intent.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="deck-controls" aria-label="Slide controls">
+    <button type="button" id="prevSlide" aria-label="Previous slide">&lt;</button>
+    <div class="hint">Use arrow keys, space, or the controls</div>
+    <button type="button" id="nextSlide" aria-label="Next slide">&gt;</button>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
