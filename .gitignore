@@ -12,3 +12,5 @@ bin/
 models/*
 !models/README.md
 temp-*.js
+healenium/logs/
+healenium/screenshots/

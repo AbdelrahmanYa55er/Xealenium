@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  postgres-db:
+    image: postgres:15.5-alpine
+    container_name: xealenium-postgres-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db/sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - xealenium-healenium-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: healenium
+      POSTGRES_USER: healenium_user
+      POSTGRES_PASSWORD: YDk2nmNs4s9aCP6K
+    networks:
+      - healenium
+
+  healenium:
+    image: healenium/hlm-backend:3.4.6
+    container_name: xealenium-healenium
+    restart: unless-stopped
+    depends_on:
+      - postgres-db
+    ports:
+      - "7878:7878"
+    environment:
+      SPRING_POSTGRES_DB: healenium
+      SPRING_POSTGRES_SCHEMA: healenium
+      SPRING_POSTGRES_USER: healenium_user
+      SPRING_POSTGRES_PASSWORD: YDk2nmNs4s9aCP6K
+      SPRING_POSTGRES_DB_HOST: postgres-db
+      KEY_SELECTOR_URL: "false"
+      COLLECT_METRICS: "true"
+      HLM_LOG_LEVEL: info
+    volumes:
+      - ./screenshots:/screenshots
+      - ./logs:/logs
+    networks:
+      - healenium
+
+  selector-imitator:
+    image: healenium/hlm-selector-imitator:1.4
+    container_name: xealenium-selector-imitator
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    networks:
+      - healenium
+
+networks:
+  healenium:
+    name: xealenium-healenium
+
+volumes:
+  xealenium-healenium-db:

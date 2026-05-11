@@ -44,6 +44,8 @@ def aeCompetitionRefusalReportPath = "${aeCompetitionRefusalOutputDir}/visual-he
 def aeCompetitionRefusalJsonReportPath = "${aeCompetitionRefusalOutputDir}/visual-healing-report.json"
 def aeCompetitionRefusalHeatmapDir = "${aeCompetitionRefusalOutputDir}/heatmaps"
 
+def healeniumComposeFile = file('healenium/docker-compose.yml')
+
 test {
     useJUnitPlatform()
     if (System.getProperty('headless') != null) {
@@ -53,6 +55,24 @@ test {
         showStandardStreams = true
         events 'passed', 'skipped', 'failed'
     }
+}
+
+tasks.register('healeniumUp', Exec) {
+    group = 'healenium'
+    description = 'Start the optional local Healenium backend services with Docker Compose.'
+    commandLine 'docker', 'compose', '-f', healeniumComposeFile.path, 'up', '-d'
+}
+
+tasks.register('healeniumDown', Exec) {
+    group = 'healenium'
+    description = 'Stop the optional local Healenium backend services.'
+    commandLine 'docker', 'compose', '-f', healeniumComposeFile.path, 'down'
+}
+
+tasks.register('healeniumStatus', Exec) {
+    group = 'healenium'
+    description = 'Show Docker Compose status for the optional local Healenium backend services.'
+    commandLine 'docker', 'compose', '-f', healeniumComposeFile.path, 'ps'
 }
 
 def configureXealeniumDemoTask = { task, taskName, pageUrl, captureBaseline, embeddingsEnabled, threshold ->

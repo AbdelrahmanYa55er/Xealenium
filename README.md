@@ -56,6 +56,7 @@ In that phase, Xealenium stops trying to imitate the old selector and instead:
 - Java 17+
 - Chrome installed
 - Windows PowerShell or `cmd` for the helper scripts
+- Docker Desktop if you want to run the optional Healenium backend locally
 
 ## Repository Layout
 
@@ -125,6 +126,30 @@ The wizard prompts for:
 - interactive mode
 - report generation
 - baseline rebuild
+
+### Optional Healenium backend
+
+Xealenium can run with or without Healenium. When the backend is available on `localhost:7878`, Selenium failures get a Healenium recovery chance before Xealenium visual healing starts.
+
+Start the local backend:
+
+```powershell
+.\scripts\healenium-start.ps1
+```
+
+Verify:
+
+```text
+http://localhost:7878/healenium/report
+```
+
+Stop it:
+
+```powershell
+.\scripts\healenium-stop.ps1
+```
+
+Details are in [`healenium/README.md`](healenium/README.md). The Java client config is [`src/test/resources/healenium.properties`](src/test/resources/healenium.properties).
 
 ### Local model bootstrap
 
